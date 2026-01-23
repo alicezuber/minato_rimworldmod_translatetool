@@ -73,11 +73,18 @@ namespace RimWorldTranslationTool
             // 一次性更新所有 UI 元素
             UpdateAllUI();
             
-            // 載入 ModsConfig.xml（如果設定中存在）
-            if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+            // 延遲載入 ModsConfig.xml，確保 UI 完全準備好
+            System.Threading.Tasks.Task.Delay(500).ContinueWith(async _ =>
             {
-                LoadModsConfig();
-            }
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    // 載入 ModsConfig.xml（如果設定中存在）
+                    if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+                    {
+                        LoadModsConfig();
+                    }
+                });
+            });
         }
         
         private void UpdateAllUI()
@@ -180,7 +187,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"儲存設定失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowErrorWithCopy("儲存設定失敗", $"儲存設定時發生錯誤", ex.ToString());
             }
         }
 
@@ -533,19 +540,19 @@ namespace RimWorldTranslationTool
                 StatusTextBlock.Text = $"找到 {_mods.Count} 個模組";
                 ProgressTextBlock.Text = "掃描完成！";
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                MessageBox.Show("沒有權限存取此目錄", "權限錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowErrorWithCopy("權限錯誤", "沒有權限存取此目錄", ex.ToString());
                 StatusTextBlock.Text = "掃描失敗 - 權限不足";
             }
-            catch (DirectoryNotFoundException)
+            catch (DirectoryNotFoundException ex)
             {
-                MessageBox.Show("指定的目錄不存在", "目錄錯誤", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowErrorWithCopy("目錄錯誤", "指定的目錄不存在", "檢查模組目錄路徑是否正確");
                 StatusTextBlock.Text = "掃描失敗 - 目錄不存在";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"掃描模組時發生錯誤：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("掃描錯誤", "掃描模組時發生錯誤", ex.ToString());
                 StatusTextBlock.Text = "掃描失敗";
             }
             finally
@@ -878,7 +885,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"無法開啟目錄：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("開啟目錄失敗", $"無法開啟模組目錄", ex.ToString());
             }
         }
 
@@ -906,90 +913,133 @@ namespace RimWorldTranslationTool
         
         private void LoadModsConfig()
         {
+            System.Diagnostics.Debug.WriteLine("=== LoadModsConfig 開始 ===");
+            
             try
             {
-                if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
+                if (string.IsNullOrEmpty(_modsConfigPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("ModsConfig 路徑為空");
                     return;
+                }
+                
+                if (!File.Exists(_modsConfigPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"ModsConfig 檔案不存在: {_modsConfigPath}");
+                    return;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"正在載入 ModsConfig: {_modsConfigPath}");
                 
                 var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
                 var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
                     .Select(li => li.Value)
                     .ToList();
                 
-                if (activeMods != null)
+                if (activeMods == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入開始 ===");
-                    System.Diagnostics.Debug.WriteLine($"啟用模組數量: {activeMods.Count}");
-                    System.Diagnostics.Debug.WriteLine($"程式模組數量: {_mods.Count}");
-                    
-                    // 標記已啟用的模組
-                    int matchedCount = 0;
-                    foreach (var mod in _mods)
-                    {
-                        bool wasEnabled = mod.IsEnabled;
-                        mod.IsEnabled = activeMods.Contains(mod.PackageId) || 
-                                     activeMods.Contains(mod.FolderName);
+                    System.Diagnostics.Debug.WriteLine("無法解析 activeMods 元素");
+                    return;
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入開始 ===");
+                System.Diagnostics.Debug.WriteLine($"啟用模組數量: {activeMods.Count}");
+                System.Diagnostics.Debug.WriteLine($"程式模組數量: {_mods.Count}");
+                
+                // 標記已啟用的模組
+                int matchedCount = 0;
+                foreach (var mod in _mods)
+                {
+                    bool wasEnabled = mod.IsEnabled;
+                    mod.IsEnabled = activeMods.Contains(mod.PackageId) || 
+                                 activeMods.Contains(mod.FolderName);
                         
-                        if (mod.IsEnabled)
-                        {
-                            matchedCount++;
-                            System.Diagnostics.Debug.WriteLine($"✅ 啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine($"❌ 未啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
-                        }
-                    }
-                    
-                    System.Diagnostics.Debug.WriteLine($"匹配到的啟用模組: {matchedCount}");
-                    System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入完成 ===");
-                    
-                    // 刷新顯示
-                    ModsDataGrid.Items.Refresh();
-                    UpdateModManagementLists();
-                    
-                    // 強制更新所有相關UI
-                    if (ModPoolListBox != null)
+                    if (mod.IsEnabled)
                     {
-                        ModPoolListBox.Items.Refresh();
-                    }
-                    if (EnabledModsListBox != null)
-                    {
-                        EnabledModsListBox.Items.Refresh();
-                    }
-                    
-                    StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組，{matchedCount} 個匹配";
-                    
-                    // 顯示匹配結果給用戶
-                    if (matchedCount < activeMods.Count)
-                    {
-                        var missingCount = activeMods.Count - matchedCount;
-                        MessageBox.Show($"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
-                                      $"這可能是因為：\n" +
-                                      $"• 模組目錄路徑不對\n" +
-                                      $"• 模組的 PackageId 讀取失敗\n" +
-                                      $"• 模組資料夾名稱不匹配\n\n" +
-                                      $"請檢查模組目錄設置是否正確。", 
-                                      "部分模組未匹配", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        matchedCount++;
+                        System.Diagnostics.Debug.WriteLine($"✅ 啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
                     }
                     else
                     {
-                        MessageBox.Show($"ModsConfig.xml 載入成功！\n\n" +
-                                      $"✅ {activeMods.Count} 個啟用模組全部匹配", 
-                                      "載入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        System.Diagnostics.Debug.WriteLine($"❌ 未啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
                     }
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"匹配到的啟用模組: {matchedCount}");
+                System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入完成 ===");
+                
+                // 刷新顯示
+                ModsDataGrid.Items.Refresh();
+                UpdateModManagementLists();
+                
+                // 強制更新所有相關UI
+                if (ModPoolListBox != null)
+                {
+                    ModPoolListBox.Items.Refresh();
+                }
+                if (EnabledModsListBox != null)
+                {
+                    EnabledModsListBox.Items.Refresh();
+                }
+                
+                StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組，{matchedCount} 個匹配";
+                
+                // 顯示匹配結果給用戶
+                System.Diagnostics.Debug.WriteLine("準備顯示匹配結果給用戶...");
+                
+                if (matchedCount < activeMods.Count)
+                {
+                    var missingCount = activeMods.Count - matchedCount;
+                    System.Diagnostics.Debug.WriteLine($"顯示部分匹配訊息，缺少 {missingCount} 個模組");
+                    
+                    var details = $"啟用模組數量: {activeMods.Count}\n" +
+                                 $"匹配到的模組: {matchedCount}\n" +
+                                 $"缺少的模組: {missingCount}\n\n" +
+                                 $"程式模組數量: {_mods.Count}\n" +
+                                 $"ModsConfig 路徑: {_modsConfigPath}";
+                    
+                    ShowErrorWithCopy("部分模組未匹配", 
+                        $"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
+                        $"這可能是因為：\n" +
+                        $"• 模組目錄路徑不對\n" +
+                        $"• 模組的 PackageId 讀取失敗\n" +
+                        $"• 模組資料夾名稱不匹配\n\n" +
+                        $"請檢查模組目錄設置是否正確。", details);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("顯示完全匹配訊息");
+                    
+                    var details = $"啟用模組數量: {activeMods.Count}\n" +
+                                 $"匹配到的模組: {matchedCount}\n" +
+                                 $"程式模組數量: {_mods.Count}\n" +
+                                 $"ModsConfig 路徑: {_modsConfigPath}";
+                    
+                    ShowErrorWithCopy("載入成功", 
+                        $"ModsConfig.xml 載入成功！\n\n" +
+                        $"✅ {activeMods.Count} 個啟用模組全部匹配", details);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"載入 ModsConfig.xml 失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"LoadModsConfig 發生錯誤: {ex.Message}");
+                ShowErrorWithCopy("載入 ModsConfig 失敗", $"載入 ModsConfig.xml 時發生錯誤", ex.ToString());
             }
+            
+            System.Diagnostics.Debug.WriteLine("=== LoadModsConfig 結束 ===");
         }
 
         private void SortModsByConfig()
         {
             try
             {
+                // 檢查是否有模組，如果沒有就先不排序
+                if (_mods.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("模組列表為空，跳過排序");
+                    return;
+                }
+                
                 if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
                 {
                     // 如果沒有 ModsConfig.xml，按字母排序
@@ -1025,16 +1075,25 @@ namespace RimWorldTranslationTool
                 
                 // 更新模組管理列表
                 UpdateModManagementLists();
+                
+                System.Diagnostics.Debug.WriteLine($"模組已按 ModsConfig.xml 排序，總計 {_mods.Count} 個模組");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"排序模組失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowErrorWithCopy("排序模組失敗", $"排序模組時發生錯誤", ex.ToString());
                 SortModsAlphabetically();
             }
         }
         
         private void SortModsAlphabetically()
         {
+            // 檢查是否有模組，如果沒有就先不排序
+            if (_mods.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("模組列表為空，跳過字母排序");
+                return;
+            }
+            
             var sortedMods = _mods.OrderBy(mod => mod.Name).ToList();
             _mods = sortedMods;
             ModsDataGrid.ItemsSource = null;
@@ -1042,6 +1101,8 @@ namespace RimWorldTranslationTool
             
             // 更新模組管理列表
             UpdateModManagementLists();
+            
+            System.Diagnostics.Debug.WriteLine($"模組已按字母排序，總計 {_mods.Count} 個模組");
         }
         
         private void UpdateModManagementLists()
@@ -1049,6 +1110,13 @@ namespace RimWorldTranslationTool
             // 檢查 UI 元素是否已初始化
             if (ModPoolListBox == null || EnabledModsListBox == null)
                 return;
+            
+            // 檢查是否有模組，如果沒有就先不排序
+            if (_mods.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("模組列表為空，跳過更新模組管理列表");
+                return;
+            }
                 
             // 更新模組池（所有模組，按字母排序）
             _modPool = _mods.OrderBy(mod => mod.Name).ToList();
@@ -1084,12 +1152,188 @@ namespace RimWorldTranslationTool
             
             EnabledModsListBox.ItemsSource = null;
             EnabledModsListBox.ItemsSource = _enabledMods;
+            
+            System.Diagnostics.Debug.WriteLine($"模組管理列表已更新 - 模組池: {_modPool.Count}, 啟用列表: {_enabledMods.Count}");
         }
 
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+        
+        private void ShowInfoMessage(string title, string message)
+        {
+            ShowErrorWithCopy(title, message, null);
+        }
+        
+        private void ShowErrorWithCopy(string title, string message, string? details = null)
+        {
+            // 根據標題決定圖標
+            string icon = title.Contains("成功") || title.Contains("載入成功") ? "✅" : 
+                         title.Contains("警告") ? "⚠️" : "❌";
+            
+            var errorWindow = new Window
+            {
+                Title = title,
+                Width = 600,
+                Height = 500,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.CanResize,
+                Background = new SolidColorBrush(Color.FromRgb(248, 250, 252))
+            };
+            
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            
+            // 主要內容區域
+            var scrollViewer = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Margin = new Thickness(20)
+            };
+            
+            var stackPanel = new StackPanel();
+            
+            // 錯誤標題
+            var titleBlock = new TextBlock
+            {
+                Text = $"{icon} {title}",
+                FontSize = 18,
+                FontWeight = FontWeights.Bold,
+                Foreground = title.Contains("成功") || title.Contains("載入成功") ? 
+                    new SolidColorBrush(Color.FromRgb(34, 197, 94)) : 
+                    title.Contains("警告") ? 
+                    new SolidColorBrush(Color.FromRgb(245, 158, 11)) :
+                    new SolidColorBrush(Color.FromRgb(220, 38, 38)),
+                Margin = new Thickness(0, 0, 0, 15)
+            };
+            stackPanel.Children.Add(titleBlock);
+            
+            // 錯誤訊息
+            var messageBlock = new TextBlock
+            {
+                Text = message,
+                FontSize = 14,
+                Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
+                Margin = new Thickness(0, 0, 0, 15),
+                TextWrapping = TextWrapping.Wrap
+            };
+            stackPanel.Children.Add(messageBlock);
+            
+            // 詳細資訊（如果有）
+            if (!string.IsNullOrEmpty(details))
+            {
+                var detailsTitle = new TextBlock
+                {
+                    Text = "📋 詳細資訊：",
+                    FontSize = 14,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(71, 85, 105)),
+                    Margin = new Thickness(0, 10, 0, 5)
+                };
+                stackPanel.Children.Add(detailsTitle);
+                
+                var detailsBlock = new TextBox
+                {
+                    Text = details,
+                    FontFamily = new FontFamily("Consolas"),
+                    FontSize = 11,
+                    Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
+                    Background = new SolidColorBrush(Color.FromRgb(255, 255, 255)),
+                    BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 225)),
+                    BorderThickness = new Thickness(1),
+                    Padding = new Thickness(10),
+                    TextWrapping = TextWrapping.Wrap,
+                    IsReadOnly = true,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    MinHeight = 200,
+                    MaxHeight = 300
+                };
+                stackPanel.Children.Add(detailsBlock);
+            }
+            
+            scrollViewer.Content = stackPanel;
+            grid.Children.Add(scrollViewer);
+            
+            // 按鈕區域
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                Margin = new Thickness(20, 10, 20, 20)
+            };
+            
+            var copyButton = new Button
+            {
+                Content = "📋 複製到剪貼簿",
+                Background = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(15, 8, 15, 8),
+                Margin = new Thickness(0, 0, 10, 0),
+                FontSize = 12,
+                Cursor = Cursors.Hand
+            };
+            
+            var fullText = $"[{title}]\n{message}";
+            if (!string.IsNullOrEmpty(details))
+            {
+                fullText += $"\n\n詳細資訊：\n{details}";
+            }
+            
+            copyButton.Click += (s, e) =>
+            {
+                Clipboard.SetText(fullText);
+                var notification = new TextBlock
+                {
+                    Text = "✅ 已複製到剪貼簿！",
+                    Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)),
+                    FontSize = 12,
+                    Margin = new Thickness(10)
+                };
+                buttonPanel.Children.Insert(0, notification);
+                
+                // 使用非阻塞方式移除通知
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(2)
+                };
+                timer.Tick += (sender, args) =>
+                {
+                    timer.Stop();
+                    if (buttonPanel.Children.Contains(notification))
+                    {
+                        buttonPanel.Children.Remove(notification);
+                    }
+                };
+                timer.Start();
+            };
+            
+            var closeButton = new Button
+            {
+                Content = "關閉",
+                Background = new SolidColorBrush(Color.FromRgb(107, 114, 128)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(15, 8, 15, 8),
+                FontSize = 12,
+                Cursor = Cursors.Hand
+            };
+            
+            closeButton.Click += (s, e) => errorWindow.Close();
+            
+            buttonPanel.Children.Add(copyButton);
+            buttonPanel.Children.Add(closeButton);
+            
+            Grid.SetRow(buttonPanel, 1);
+            grid.Children.Add(buttonPanel);
+            
+            errorWindow.Content = grid;
+            errorWindow.Owner = this;
+            errorWindow.ShowDialog();
         }
         
         // 模組管理事件處理器
@@ -1112,7 +1356,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"移動模組失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("移動模組失敗", $"移動模組到啟用列表時發生錯誤", ex.ToString());
             }
         }
         
@@ -1135,7 +1379,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"移動模組失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("移動模組失敗", $"移動模組到模組池時發生錯誤", ex.ToString());
             }
         }
         
@@ -1172,124 +1416,66 @@ namespace RimWorldTranslationTool
                 );
                 
                 xml.Save(_modsConfigPath);
-                MessageBox.Show("ModsConfig.xml 已儲存成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                ShowInfoMessage("成功", "ModsConfig.xml 已儲存成功！");
                 StatusTextBlock.Text = "配置已儲存";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"儲存失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("儲存失敗", $"儲存 ModsConfig.xml 時發生錯誤", ex.ToString());
             }
         }
         
         private void RefreshModLists_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("=== 重新整理按鈕被點擊 ===");
+            
             try
             {
                 // 重新載入 ModsConfig.xml 並更新列表
                 if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
                 {
                     LoadModsConfig();
-                    MessageBox.Show("模組列表已重新整理！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowInfoMessage("成功", "模組列表已重新整理！");
                 }
                 else
                 {
-                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowInfoMessage("提示", "請先選擇 ModsConfig.xml 檔案");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"重新整理失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowErrorWithCopy("重新整理失敗", $"重新整理模組列表時發生錯誤", ex.ToString());
             }
         }
         
         private void DiagnoseModsConfig_Click(object sender, RoutedEventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("=== 診斷按鈕被點擊 ===");
+            
+            // 最簡單的測試
             try
             {
-                if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
+                var result = MessageBox.Show(
+                    "診斷按鈕測試！\n\n你看到了這個訊息嗎？", 
+                    "按鈕測試", 
+                    MessageBoxButton.YesNo, 
+                    MessageBoxImage.Question);
+                
+                System.Diagnostics.Debug.WriteLine($"用戶選擇了: {result}");
+                
+                if (result == MessageBoxResult.Yes)
                 {
-                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
+                    ShowInfoMessage("成功", "太好了！按鈕和 MessageBox 都正常工作！");
                 }
-                
-                var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
-                var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
-                    .Select(li => li.Value)
-                    .ToList();
-                
-                var report = new System.Text.StringBuilder();
-                report.AppendLine("=== ModsConfig.xml 診斷報告 ===");
-                report.AppendLine($"檔案路徑: {_modsConfigPath}");
-                report.AppendLine($"啟用模組數量: {activeMods.Count}");
-                report.AppendLine($"程式模組數量: {_mods.Count}");
-                report.AppendLine();
-                
-                report.AppendLine("前10個啟用的模組:");
-                foreach (var modId in activeMods.Take(10))
+                else
                 {
-                    var matchedMod = _mods.FirstOrDefault(m => 
-                        m.PackageId == modId || m.FolderName == modId);
-                    var status = matchedMod != null ? "✅ 匹配" : "❌ 未匹配";
-                    report.AppendLine($"  {modId} - {status}");
-                    if (matchedMod != null)
-                    {
-                        report.AppendLine($"    → {matchedMod.Name}");
-                    }
+                    ShowInfoMessage("確認", "看起來按鈕和 MessageBox 都能正常顯示");
                 }
-                
-                report.AppendLine();
-                report.AppendLine("程式中的前10個模組:");
-                foreach (var mod in _mods.Take(10))
-                {
-                    var isActive = activeMods.Contains(mod.PackageId) || activeMods.Contains(mod.FolderName);
-                    var status = isActive ? "✅ 啟用" : "❌ 未啟用";
-                    report.AppendLine($"  {mod.Name} - {status}");
-                    report.AppendLine($"    PackageId: '{mod.PackageId}'");
-                    report.AppendLine($"    Folder: '{mod.FolderName}'");
-                }
-                
-                // 顯示報告
-                var reportWindow = new Window
-                {
-                    Title = "ModsConfig.xml 診斷報告",
-                    Width = 700,
-                    Height = 600,
-                    Content = new Grid
-                    {
-                        Children = 
-                        {
-                            new ScrollViewer
-                            {
-                                Content = new TextBlock
-                                {
-                                    Text = report.ToString(),
-                                    FontFamily = new FontFamily("Consolas"),
-                                    FontSize = 11,
-                                    Padding = new Thickness(10, 10, 10, 10),
-                                    TextWrapping = TextWrapping.NoWrap
-                                }
-                            },
-                            new Button
-                            {
-                                Content = "📋 複製報告",
-                                HorizontalAlignment = HorizontalAlignment.Right,
-                                VerticalAlignment = VerticalAlignment.Bottom,
-                                Margin = new Thickness(10),
-                                Padding = new Thickness(10, 5, 10, 5),
-                                Command = new RelayCommand(() => 
-                                {
-                                    Clipboard.SetText(report.ToString());
-                                    MessageBox.Show("報告已複製到剪貼簿！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                                })
-                            }
-                        }
-                    }
-                };
-                reportWindow.Show();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"診斷失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"測試過程發生錯誤: {ex.Message}");
+                ShowErrorWithCopy("測試失敗", $"測試失敗：{ex.Message}", ex.ToString());
             }
         }
         
