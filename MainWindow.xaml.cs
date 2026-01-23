@@ -1109,6 +1109,27 @@ namespace RimWorldTranslationTool
             }
         }
         
+        private void RefreshModLists_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 重新載入 ModsConfig.xml 並更新列表
+                if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+                {
+                    LoadModsConfig();
+                    MessageBox.Show("模組列表已重新整理！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"重新整理失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
         private void ModPoolListBox_Drop(object sender, DragEventArgs e)
         {
             try
