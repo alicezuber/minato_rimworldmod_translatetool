@@ -11,6 +11,7 @@ x86/
 bld/
 [Bb]in/
 [Oo]bj/
+RimWorldTranslationTool_Settings.json
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/

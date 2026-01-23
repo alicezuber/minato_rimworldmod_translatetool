@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
+using System.Text.Json;
 
 namespace RimWorldTranslationTool
 {
@@ -20,11 +21,16 @@ namespace RimWorldTranslationTool
         private Dictionary<string, List<ModInfo>> _translationMappings = new();
         private string _selectedGameVersion = "1.6";
         private string _modsConfigPath = "";
+        private AppSettings _settings = new AppSettings();
+        private const string SettingsFileName = "RimWorldTranslationTool_Settings.json";
 
         public MainWindow()
         {
             InitializeComponent();
             DataContext = this;
+            
+            // 載入設定
+            LoadSettings();
             
             // 初始化版本選項
             InitializeGameVersions();
@@ -41,6 +47,57 @@ namespace RimWorldTranslationTool
             var versions = new[] { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6" };
             GameVersionComboBox.ItemsSource = versions;
             GameVersionComboBox.SelectedItem = _selectedGameVersion;
+        }
+        
+        private void LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(SettingsFileName))
+                {
+                    var json = File.ReadAllText(SettingsFileName);
+                    _settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                    
+                    // 恢復設定
+                    if (!string.IsNullOrEmpty(_settings.ModsDirectory))
+                    {
+                        FolderPath = _settings.ModsDirectory;
+                    }
+                    
+                    if (!string.IsNullOrEmpty(_settings.ModsConfigPath))
+                    {
+                        _modsConfigPath = _settings.ModsConfigPath;
+                        ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
+                    }
+                    
+                    if (!string.IsNullOrEmpty(_settings.GameVersion))
+                    {
+                        _selectedGameVersion = _settings.GameVersion;
+                        GameVersionComboBox.SelectedItem = _selectedGameVersion;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"載入設定失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        
+        private void SaveSettings()
+        {
+            try
+            {
+                _settings.ModsDirectory = FolderPath;
+                _settings.ModsConfigPath = _modsConfigPath;
+                _settings.GameVersion = _selectedGameVersion;
+                
+                var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingsFileName, json);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"儲存設定失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private string _folderPath = "";
@@ -67,6 +124,7 @@ namespace RimWorldTranslationTool
                 {
                     _folderPath = value;
                     OnPropertyChanged(nameof(FolderPath));
+                    SaveSettings(); // 自動儲存設定
                 }
             }
         }
@@ -76,6 +134,7 @@ namespace RimWorldTranslationTool
             if (GameVersionComboBox.SelectedItem is string selectedVersion)
             {
                 _selectedGameVersion = selectedVersion;
+                SaveSettings(); // 自動儲存設定
                 RefreshVersionCompatibility();
             }
         }
@@ -123,15 +182,18 @@ namespace RimWorldTranslationTool
 
         private void BrowseButton_Click(object sender, RoutedEventArgs e)
         {
-            using var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            dialog.Description = "選擇 RimWorld 模組目錄";
-            dialog.ShowNewFolderButton = false;
-            dialog.SelectedPath = FolderPath;
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "選擇 RimWorld 模組目錄",
+                ShowNewFolderButton = false,
+                SelectedPath = !string.IsNullOrEmpty(FolderPath) ? FolderPath : 
+                    (!string.IsNullOrEmpty(_settings.ModsDirectory) ? _settings.ModsDirectory : "")
+            };
             
             var result = dialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
-                FolderPath = dialog.SelectedPath;
+                FolderPath = dialog.SelectedPath; // 會自動觸發 SaveSettings
             }
         }
 
@@ -705,13 +767,17 @@ namespace RimWorldTranslationTool
                 Title = "選擇 ModsConfig.xml 檔案",
                 Filter = "XML 檔案|*.xml|所有檔案|*.*",
                 CheckFileExists = true,
-                Multiselect = false
+                Multiselect = false,
+                InitialDirectory = !string.IsNullOrEmpty(_modsConfigPath) ? 
+                    Path.GetDirectoryName(_modsConfigPath) : 
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
             };
 
             if (dialog.ShowDialog() == true)
             {
                 _modsConfigPath = dialog.FileName;
                 ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
+                SaveSettings(); // 自動儲存設定
                 LoadModsConfig();
             }
         }
@@ -755,6 +821,13 @@ namespace RimWorldTranslationTool
         }
     }
 
+    public class AppSettings
+    {
+        public string ModsDirectory { get; set; } = "";
+        public string ModsConfigPath { get; set; } = "";
+        public string GameVersion { get; set; } = "1.6";
+    }
+
     public class ModInfo
     {
         public string FolderName { get; set; } = "";
@@ -778,6 +851,14 @@ namespace RimWorldTranslationTool
         public Brush VersionCompatibilityColor => IsVersionCompatible ? 
             new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)) : new SolidColorBrush(Color.FromArgb(128, 255, 255, 0));
         
+        // 背景色屬性
+        public Brush HasChineseTraditionalBackground => GetStatusBackground(HasChineseTraditional);
+        public Brush HasChineseSimplifiedBackground => GetStatusBackground(HasChineseSimplified);
+        public Brush HasTranslationPatchBackground => GetStatusBackground(HasTranslationPatch);
+        public Brush CanTranslateBackground => GetStatusBackground(CanTranslate);
+        public Brush VersionCompatibilityBackground => IsVersionCompatible ? 
+            new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)) : new SolidColorBrush(Color.FromArgb(128, 255, 255, 0));
+        
         private Brush GetStatusColor(string status)
         {
             return status switch
@@ -785,6 +866,16 @@ namespace RimWorldTranslationTool
                 "有" or "是" => new SolidColorBrush(Color.FromArgb(128, 0, 128, 0)),
                 "無" or "否" => new SolidColorBrush(Color.FromArgb(128, 128, 0, 0)),
                 _ => new SolidColorBrush(Color.FromArgb(128, 0, 0, 0))
+            };
+        }
+        
+        private Brush GetStatusBackground(string status)
+        {
+            return status switch
+            {
+                "有" or "是" => new SolidColorBrush(Color.FromArgb(50, 0, 255, 0)),
+                "無" or "否" => new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)),
+                _ => new SolidColorBrush(Color.FromArgb(50, 0, 0, 0))
             };
         }
     }

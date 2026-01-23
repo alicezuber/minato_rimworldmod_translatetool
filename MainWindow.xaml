@@ -54,35 +54,35 @@
                 <DataGridTextColumn Header="版本" Binding="{Binding SupportedVersions}" Width="100">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{Binding VersionCompatibilityColor}"/>
+                            <Setter Property="Background" Value="{Binding VersionCompatibilityBackground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="繁中翻譯" Binding="{Binding HasChineseTraditional}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{Binding HasChineseTraditionalColor}"/>
+                            <Setter Property="Background" Value="{Binding HasChineseTraditionalBackground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="簡中翻譯" Binding="{Binding HasChineseSimplified}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{Binding HasChineseSimplifiedColor}"/>
+                            <Setter Property="Background" Value="{Binding HasChineseSimplifiedBackground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="翻譯補丁" Binding="{Binding HasTranslationPatch}" Width="80">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{Binding HasTranslationPatchColor}"/>
+                            <Setter Property="Background" Value="{Binding HasTranslationPatchBackground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="可翻譯" Binding="{Binding CanTranslate}" Width="60">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="{Binding CanTranslateColor}"/>
+                            <Setter Property="Background" Value="{Binding CanTranslateBackground}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
