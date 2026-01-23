@@ -51,7 +51,7 @@ namespace RimWorldTranslationTool
         
         // 自動推導的路徑
         private string WorkshopPath => !string.IsNullOrEmpty(_gamePath) ? 
-            Path.Combine(Path.GetDirectoryName(_gamePath) ?? "", "workshop", "content", "294100") : "";
+            Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_gamePath)) ?? "", "workshop", "content", "294100") : "";
         
         private string ConfigPath => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
@@ -66,6 +66,13 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
+            // 確保 WPFLocalizeExtension 文化設定正確
+            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
+            WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = currentCulture;
+            
+            // 測試 i18n 功能
+            TestI18n();
+            
             // 載入設定
             LoadSettings();
             
@@ -77,6 +84,80 @@ namespace RimWorldTranslationTool
             
             // 延遲更新 UI，確保控制項已初始化
             this.Loaded += MainWindow_Loaded;
+        }
+        
+        private void TestI18n()
+        {
+            Logger.Log("=== i18n 測試開始 ===");
+            
+            try
+            {
+                // 1. 測試 C# 資源管理器
+                Logger.Log("1. 測試 C# 資源管理器");
+                
+                // 測試中文
+                LocalizationManager.SetCulture(new System.Globalization.CultureInfo("zh-TW"));
+                var zhTitle = LocalizationManager.GetString("WindowTitle");
+                var zhSettings = LocalizationManager.GetString("TabSettings");
+                Logger.Log($"   zh-TW WindowTitle: '{zhTitle}'");
+                Logger.Log($"   zh-TW TabSettings: '{zhSettings}'");
+                
+                // 測試英文
+                LocalizationManager.SetCulture(new System.Globalization.CultureInfo("en-US"));
+                var enTitle = LocalizationManager.GetString("WindowTitle");
+                var enSettings = LocalizationManager.GetString("TabSettings");
+                Logger.Log($"   en-US WindowTitle: '{enTitle}'");
+                Logger.Log($"   en-US TabSettings: '{enSettings}'");
+                
+                // 2. 測試 WPFLocalizeExtension
+                Logger.Log("2. 測試 WPFLocalizeExtension");
+                var wpfCulture = WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture;
+                Logger.Log($"   WPFLocalizeExtension Culture: {wpfCulture.Name}");
+                
+                // 3. 檢查衛星組件
+                Logger.Log("3. 檢查衛星組件");
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                var location = assembly.Location ?? throw new InvalidOperationException("無法取得程式位置");
+                Logger.Log($"   主程式位置: {location}");
+                
+                var directory = Path.GetDirectoryName(location) ?? throw new InvalidOperationException("無法取得程式目錄");
+                var zhTWAssemblyPath = Path.Combine(directory, "zh-TW", "RimWorldTranslationTool.resources.dll");
+                var enUSAssemblyPath = Path.Combine(directory, "en-US", "RimWorldTranslationTool.resources.dll");
+                
+                Logger.Log($"   zh-TW 衛星組件存在: {File.Exists(zhTWAssemblyPath)}");
+                Logger.Log($"   en-US 衛星組件存在: {File.Exists(enUSAssemblyPath)}");
+                
+                // 恢復預設語言
+                LocalizationManager.SetCulture(System.Globalization.CultureInfo.CurrentCulture);
+                // 同時恢復 WPFLocalizeExtension 的文化設定
+                WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = System.Globalization.CultureInfo.CurrentCulture;
+                
+                // 4. 檢查 UI 綁定
+                Logger.Log("4. 檢查 UI 綁定");
+                Logger.Log($"   視窗標題實際顯示: {this.Title}");
+                Logger.Log($"   預期標題: {zhTitle}");
+                
+                // 檢查是否載入成功
+                if (zhTitle.Contains("WindowTitle") || zhTitle.Contains("["))
+                {
+                    Logger.LogWarning("資源檔案載入失敗 - 顯示的是 key 而不是值");
+                    Logger.Log("   可能原因:");
+                    Logger.Log("   1. 資源檔案沒有正確編譯成衛星組件");
+                    Logger.Log("   2. WPFLocalizeExtension 找不到資源");
+                    Logger.Log("   3. 資源檔案中的 key 不匹配");
+                }
+                else
+                {
+                    Logger.LogSuccess("資源檔案載入成功");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("i18n 測試發生錯誤", ex);
+            }
+            
+            Logger.Log("=== i18n 測試完成 ===");
+            Logger.Log($"日誌檔案位置: {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "i18n_test.log")}");
         }
         
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -154,7 +235,8 @@ namespace RimWorldTranslationTool
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"載入設定失敗：{ex.Message}");
-                ShowErrorWithCopy("載入設定失敗", $"載入設定時發生錯誤", ex.ToString());
+                ShowErrorWithCopy(LocalizationManager.GetString("LoadSettingsFailed_Title"), 
+                                 LocalizationManager.GetString("LoadSettingsFailed_Message"), ex.ToString());
             }
             finally
             {
@@ -182,7 +264,8 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                ShowErrorWithCopy("儲存設定失敗", $"儲存設定時發生錯誤", ex.ToString());
+                ShowErrorWithCopy(LocalizationManager.GetString("SaveSettingsFailed_Title"), 
+                                 LocalizationManager.GetString("SaveSettingsFailed_Message"), ex.ToString());
             }
         }
 
@@ -557,13 +640,17 @@ namespace RimWorldTranslationTool
         {
             // 調試：輸出當前路徑狀態
             System.Diagnostics.Debug.WriteLine("=== 路徑驗證開始 ===");
-            System.Diagnostics.Debug.WriteLine($"遊戲路徑: {path}");
-            System.Diagnostics.Debug.WriteLine($"工作坊路徑: {WorkshopPath}");
+            System.Diagnostics.Debug.WriteLine($"輸入路徑: '{path}'");
+            System.Diagnostics.Debug.WriteLine($"遊戲路徑: '{GamePath}'");
+            System.Diagnostics.Debug.WriteLine($"工作坊路徑: '{WorkshopPath}'");
+            System.Diagnostics.Debug.WriteLine($"設定路徑: '{ConfigPath}'");
             
             // 檢查遊戲路徑是否有效
             if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
             {
-                System.Diagnostics.Debug.WriteLine("❌ 遊戲路徑無效");
+                System.Diagnostics.Debug.WriteLine($"❌ 遊戲路徑無效: '{path}'");
+                System.Diagnostics.Debug.WriteLine($"  路徑為空: {string.IsNullOrEmpty(path)}");
+                System.Diagnostics.Debug.WriteLine($"  目錄存在: {(!string.IsNullOrEmpty(path) && Directory.Exists(path))}");
                 return false;
             }
             
@@ -572,16 +659,30 @@ namespace RimWorldTranslationTool
             
             // 1. 檢查 Mods 資料夾
             var modsPath = Path.Combine(path, "Mods");
-            System.Diagnostics.Debug.WriteLine($"檢查 Mods 資料夾: {modsPath}");
+            System.Diagnostics.Debug.WriteLine($"檢查 Mods 資料夾: '{modsPath}'");
             if (Directory.Exists(modsPath))
             {
-                var modsDirs = Directory.GetDirectories(modsPath);
-                System.Diagnostics.Debug.WriteLine($"  找到 {modsDirs.Length} 個資料夾");
-                
-                var hasMods = modsDirs
-                    .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
-                System.Diagnostics.Debug.WriteLine($"  有有效模組: {hasMods}");
-                if (hasMods) hasValidModLocation = true;
+                try
+                {
+                    var modsDirs = Directory.GetDirectories(modsPath);
+                    System.Diagnostics.Debug.WriteLine($"  找到 {modsDirs.Length} 個資料夾");
+                    
+                    var hasMods = modsDirs
+                        .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
+                    System.Diagnostics.Debug.WriteLine($"  有有效模組: {hasMods}");
+                    if (hasMods) hasValidModLocation = true;
+                    
+                    // 詳細列出前5個資料夾
+                    foreach (var dir in modsDirs.Take(5))
+                    {
+                        var hasAbout = File.Exists(Path.Combine(dir, "About", "About.xml"));
+                        System.Diagnostics.Debug.WriteLine($"    {Path.GetFileName(dir)}: {hasAbout}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  檢查 Mods 資料夾時發生錯誤: {ex.Message}");
+                }
             }
             else
             {
@@ -590,16 +691,30 @@ namespace RimWorldTranslationTool
             
             // 2. 檢查 Data 資料夾（核心模組）
             var dataPath = Path.Combine(path, "Data");
-            System.Diagnostics.Debug.WriteLine($"檢查 Data 資料夾: {dataPath}");
+            System.Diagnostics.Debug.WriteLine($"檢查 Data 資料夾: '{dataPath}'");
             if (Directory.Exists(dataPath))
             {
-                var dataDirs = Directory.GetDirectories(dataPath);
-                System.Diagnostics.Debug.WriteLine($"  找到 {dataDirs.Length} 個資料夾");
-                
-                var hasCoreMods = dataDirs
-                    .Any(dir => File.Exists(Path.Combine(dir, "About.xml")));
-                System.Diagnostics.Debug.WriteLine($"  有核心模組: {hasCoreMods}");
-                if (hasCoreMods) hasValidModLocation = true;
+                try
+                {
+                    var dataDirs = Directory.GetDirectories(dataPath);
+                    System.Diagnostics.Debug.WriteLine($"  找到 {dataDirs.Length} 個資料夾");
+                    
+                    var hasCoreMods = dataDirs
+                        .Any(dir => File.Exists(Path.Combine(dir, "About.xml")));
+                    System.Diagnostics.Debug.WriteLine($"  有核心模組: {hasCoreMods}");
+                    if (hasCoreMods) hasValidModLocation = true;
+                    
+                    // 詳細列出前5個資料夾
+                    foreach (var dir in dataDirs.Take(5))
+                    {
+                        var hasAbout = File.Exists(Path.Combine(dir, "About.xml"));
+                        System.Diagnostics.Debug.WriteLine($"    {Path.GetFileName(dir)}: {hasAbout}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  檢查 Data 資料夾時發生錯誤: {ex.Message}");
+                }
             }
             else
             {
@@ -609,16 +724,30 @@ namespace RimWorldTranslationTool
             // 3. 如果有設定工作坊路徑，也檢查工作坊
             if (!string.IsNullOrEmpty(WorkshopPath))
             {
-                System.Diagnostics.Debug.WriteLine($"檢查工作坊路徑: {WorkshopPath}");
+                System.Diagnostics.Debug.WriteLine($"檢查工作坊路徑: '{WorkshopPath}'");
                 if (Directory.Exists(WorkshopPath))
                 {
-                    var workshopDirs = Directory.GetDirectories(WorkshopPath);
-                    System.Diagnostics.Debug.WriteLine($"  找到 {workshopDirs.Length} 個資料夾");
-                    
-                    var hasWorkshopMods = workshopDirs
-                        .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
-                    System.Diagnostics.Debug.WriteLine($"  有工作坊模組: {hasWorkshopMods}");
-                    if (hasWorkshopMods) hasValidModLocation = true;
+                    try
+                    {
+                        var workshopDirs = Directory.GetDirectories(WorkshopPath);
+                        System.Diagnostics.Debug.WriteLine($"  找到 {workshopDirs.Length} 個資料夾");
+                        
+                        var hasWorkshopMods = workshopDirs
+                            .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
+                        System.Diagnostics.Debug.WriteLine($"  有工作坊模組: {hasWorkshopMods}");
+                        if (hasWorkshopMods) hasValidModLocation = true;
+                        
+                        // 詳細列出前5個資料夾
+                        foreach (var dir in workshopDirs.Take(5))
+                        {
+                            var hasAbout = File.Exists(Path.Combine(dir, "About", "About.xml"));
+                            System.Diagnostics.Debug.WriteLine($"    {Path.GetFileName(dir)}: {hasAbout}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  檢查工作坊路徑時發生錯誤: {ex.Message}");
+                    }
                 }
                 else
                 {
@@ -743,21 +872,6 @@ namespace RimWorldTranslationTool
                     System.Diagnostics.Debug.WriteLine("模組掃描完成，但未設定 ModsConfig.xml 路徑");
                 }
             }
-            catch (UnauthorizedAccessException ex)
-            {
-                ShowErrorWithCopy("權限錯誤", "沒有權限存取此目錄", ex.ToString());
-                StatusTextBlock.Text = "掃描失敗 - 權限不足";
-            }
-            catch (DirectoryNotFoundException ex)
-            {
-                ShowErrorWithCopy("目錄錯誤", "指定的目錄不存在", "檢查模組目錄路徑是否正確");
-                StatusTextBlock.Text = "掃描失敗 - 目錄不存在";
-            }
-            catch (Exception ex)
-            {
-                ShowErrorWithCopy("掃描錯誤", "掃描模組時發生錯誤", ex.ToString());
-                StatusTextBlock.Text = "掃描失敗";
-            }
             finally
             {
                 // 隱藏進度條
@@ -766,7 +880,7 @@ namespace RimWorldTranslationTool
             }
         }
 
-        private ModInfo LoadModInfo(string modPath)
+        private ModInfo? LoadModInfo(string modPath)
         {
             try
             {
@@ -1798,30 +1912,21 @@ namespace RimWorldTranslationTool
         {
             System.Diagnostics.Debug.WriteLine("=== 診斷按鈕被點擊 ===");
             
-            // 最簡單的測試
-            try
-            {
-                var result = ShowConfirmDialog(
-                    "診斷按鈕測試", 
-                    "診斷按鈕測試！\n\n你看到了這個訊息嗎？",
-                    "看到了", "沒看到");
-                
-                System.Diagnostics.Debug.WriteLine($"用戶選擇了: {result}");
-                
-                if (result == MessageBoxResult.Yes)
-                {
-                    ShowInfoMessage("成功", "太好了！按鈕和自定義視窗都正常工作！");
-                }
-                else
-                {
-                    ShowInfoMessage("確認", "看起來按鈕和自定義視窗都能正常顯示");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"測試過程發生錯誤: {ex.Message}");
-                ShowErrorWithCopy("測試失敗", $"測試失敗：{ex.Message}", ex.ToString());
-            }
+            // 先測試路徑驗證
+            System.Diagnostics.Debug.WriteLine("=== 路徑診斷測試 ===");
+            var isValid = IsValidModDirectory(GamePath);
+            System.Diagnostics.Debug.WriteLine($"路徑驗證結果: {isValid}");
+            
+            // 顯示診斷結果
+            var diagnosticInfo = $"遊戲路徑: {GamePath}\n" +
+                                $"工作坊路徑: {WorkshopPath}\n" +
+                                $"設定路徑: {ConfigPath}\n" +
+                                $"路徑驗證結果: {(isValid ? "✅ 通過" : "❌ 失敗")}\n\n" +
+                                $"請查看 Debug 輸出視窗獲取詳細資訊。";
+            
+            ShowErrorWithCopy("路徑診斷結果", 
+                "路徑診斷完成！\n\n詳細資訊請查看 Debug 輸出視窗。", 
+                diagnosticInfo);
         }
         
         private void ModPoolListBox_Drop(object sender, DragEventArgs e)
@@ -1936,6 +2041,37 @@ namespace RimWorldTranslationTool
                 "無" or "否" => new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)),
                 _ => new SolidColorBrush(Colors.Transparent) // 正常狀態無底色
             };
+        }
+        
+        private void TestI18nButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 測試 C# 中的本地化
+                var title = LocalizationManager.GetString("WindowTitle");
+                var settings = LocalizationManager.GetString("TabSettings");
+                var browse = LocalizationManager.GetString("Browse");
+                
+                var message = $"C# 本地化測試結果：\n\n" +
+                             $"WindowTitle: '{title}'\n" +
+                             $"TabSettings: '{settings}'\n" +
+                             $"Browse: '{browse}'\n\n" +
+                             $"如果看到的是 key 而不是實際文字，\n" +
+                             "說明資源檔案沒有正確載入。";
+                
+                if (title.Contains("WindowTitle") || title.Contains("["))
+                {
+                    MessageBox.Show(message, "❌ i18n 測試失敗", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                else
+                {
+                    MessageBox.Show(message, "✅ i18n 測試成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"測試發生錯誤：{ex.Message}\n\n{ex}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

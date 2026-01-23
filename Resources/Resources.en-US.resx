@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <data name="WindowTitle" xml:space="preserve">
+    <value>RimWorld Translation Tool</value>
+  </data>
+  <data name="Subtitle" xml:space="preserve">
+    <value>Manage and view mod translation status</value>
+  </data>
+  
+  <!-- Tab Headers -->
+  <data name="TabSettings" xml:space="preserve">
+    <value>⚙️ Settings</value>
+  </data>
+  <data name="TabModBrowser" xml:space="preserve">
+    <value>📦 Mod Browser</value>
+  </data>
+  <data name="TabModManager" xml:space="preserve">
+    <value>🔧 Mod Manager</value>
+  </data>
+  
+  <!-- Settings Tab -->
+  <data name="RimWorldPathSettings" xml:space="preserve">
+    <value>🎮 RimWorld Path Settings</value>
+  </data>
+  <data name="PathSettingsDescription" xml:space="preserve">
+    <value>Set RimWorld game directory, tool will auto-detect other paths</value>
+  </data>
+  <data name="GameDirectory" xml:space="preserve">
+    <value>🎯 RimWorld Game Directory</value>
+  </data>
+  <data name="GameDirectoryDescription" xml:space="preserve">
+    <value>RimWorld game installation directory (steamapps\common\RimWorld)</value>
+  </data>
+  <data name="Browse" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="AutoDetectedPaths" xml:space="preserve">
+    <value>🤖 Auto-detected Paths</value>
+  </data>
+  <data name="WorkshopPath" xml:space="preserve">
+    <value>📦 Workshop Path:</value>
+  </data>
+  <data name="ConfigPath" xml:space="preserve">
+    <value>⚙️ Config Path:</value>
+  </data>
+  <data name="AutoDetectPaths" xml:space="preserve">
+    <value>🔍 Auto-detect RimWorld Paths</value>
+  </data>
+  
+  <!-- ModsConfig Settings -->
+  <data name="ModsConfigSettings" xml:space="preserve">
+    <value>📋 ModsConfig.xml Settings</value>
+  </data>
+  <data name="ModsConfigDescription" xml:space="preserve">
+    <value>Select or confirm ModsConfig.xml file location</value>
+  </data>
+  <data name="NoFileSelected" xml:space="preserve">
+    <value>No file selected</value>
+  </data>
+  <data name="SelectFile" xml:space="preserve">
+    <value>Select File...</value>
+  </data>
+  
+  <!-- Game Version -->
+  <data name="GameVersion" xml:space="preserve">
+    <value>🎮 Game Version</value>
+  </data>
+  <data name="GameVersionDescription" xml:space="preserve">
+    <value>Select current RimWorld version</value>
+  </data>
+  <data name="CurrentVersion" xml:space="preserve">
+    <value>Current Version:</value>
+  </data>
+  
+  <!-- Mod Browser Tab -->
+  <data name="ScanMods" xml:space="preserve">
+    <value>🔍 Scan Mods</value>
+  </data>
+  <data name="ReadyToScan" xml:space="preserve">
+    <value>Ready to scan mods...</value>
+  </data>
+  <data name="PreparingScan" xml:space="preserve">
+    <value>Preparing scan...</value>
+  </data>
+  
+  <!-- DataGrid Headers -->
+  <data name="ColumnName" xml:space="preserve">
+    <value>Mod Name</value>
+  </data>
+  <data name="ColumnAuthor" xml:space="preserve">
+    <value>Author</value>
+  </data>
+  <data name="ColumnVersion" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="ColumnTraditionalChinese" xml:space="preserve">
+    <value>Trad. Chinese</value>
+  </data>
+  <data name="ColumnSimplifiedChinese" xml:space="preserve">
+    <value>Simp. Chinese</value>
+  </data>
+  <data name="ColumnPatch" xml:space="preserve">
+    <value>Patch</value>
+  </data>
+  <data name="ColumnTranslatable" xml:space="preserve">
+    <value>Translatable</value>
+  </data>
+  <data name="ColumnEnabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  
+  <!-- Mod Details Panel -->
+  <data name="ModDetails" xml:space="preserve">
+    <value>Mod Details</value>
+  </data>
+  <data name="TranslationStatus" xml:space="preserve">
+    <value>Translation Status</value>
+  </data>
+  <data name="RelatedTranslationPatches" xml:space="preserve">
+    <value>Related Translation Patches</value>
+  </data>
+  <data name="SelectModToViewDetails" xml:space="preserve">
+    <value>Select a mod to view details</value>
+  </data>
+  
+  <!-- Mod Manager Tab -->
+  <data name="ModPool" xml:space="preserve">
+    <value>📦 Mod Pool</value>
+  </data>
+  <data name="ModPoolDescription" xml:space="preserve">
+    <value>All available mods (alphabetically sorted)</value>
+  </data>
+  <data name="EnabledList" xml:space="preserve">
+    <value>✅ Enabled List</value>
+  </data>
+  <data name="EnabledListDescription" xml:space="preserve">
+    <value>Enabled mods (in load order)</value>
+  </data>
+  
+  <!-- Action Buttons -->
+  <data name="EnableSelected" xml:space="preserve">
+    <value>✅ Enable Selected</value>
+  </data>
+  <data name="DisableSelected" xml:space="preserve">
+    <value>❌ Disable Selected</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>🔄 Refresh</value>
+  </data>
+  <data name="Diagnose" xml:space="preserve">
+    <value>🔍 Diagnose</value>
+  </data>
+  <data name="SaveConfig" xml:space="preserve">
+    <value>💾 Save Config</value>
+  </data>
+  
+  <!-- Status Bar -->
+  <data name="AppVersion" xml:space="preserve">
+    <value>RimWorld Translation Tool v1.0</value>
+  </data>
+  
+  <!-- Code Messages -->
+  <data name="Error_Title" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="UnhandledException_Message" xml:space="preserve">
+    <value>An unhandled error occurred in the program:\n{0}</value>
+  </data>
+  <data name="LoadSettingsFailed_Title" xml:space="preserve">
+    <value>Failed to Load Settings</value>
+  </data>
+  <data name="LoadSettingsFailed_Message" xml:space="preserve">
+    <value>An error occurred while loading settings</value>
+  </data>
+  <data name="SaveSettingsFailed_Title" xml:space="preserve">
+    <value>Failed to Save Settings</value>
+  </data>
+  <data name="SaveSettingsFailed_Message" xml:space="preserve">
+    <value>An error occurred while saving settings</value>
+  </data>
+  <data name="SelectRimWorldDirectory_Title" xml:space="preserve">
+    <value>Select RimWorld Game Directory</value>
+  </data>
+  <data name="SelectModsConfigFile_Title" xml:space="preserve">
+    <value>Select ModsConfig.xml File</value>
+  </data>
+  <data name="XmlFiles_Filter" xml:space="preserve">
+    <value>XML Files|*.xml</value>
+  </data>
+  <data name="ScanningMods_Message" xml:space="preserve">
+    <value>Scanning mods...</value>
+  </data>
+  <data name="ScanComplete_Message" xml:space="preserve">
+    <value>Scan complete, found {0} mods</value>
+  </data>
+  <data name="DiagnosisComplete_Title" xml:space="preserve">
+    <value>Diagnosis Complete</value>
+  </data>
+  <data name="DiagnosisComplete_Message" xml:space="preserve">
+    <value>ModsConfig.xml diagnosis complete</value>
+  </data>
+  <data name="ConfigSaved_Title" xml:space="preserve">
+    <value>Configuration Saved</value>
+  </data>
+  <data name="ConfigSaved_Message" xml:space="preserve">
+    <value>ModsConfig.xml has been successfully saved</value>
+  </data>
+</root>
