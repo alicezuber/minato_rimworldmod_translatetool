@@ -23,6 +23,10 @@ namespace RimWorldTranslationTool
         private string _modsConfigPath = "";
         private AppSettings _settings = new AppSettings();
         private const string SettingsFileName = "RimWorldTranslationTool_Settings.json";
+        
+        // 模組管理相關
+        private List<ModInfo> _modPool = new List<ModInfo>();
+        private List<ModInfo> _enabledMods = new List<ModInfo>();
 
         public MainWindow()
         {
@@ -35,11 +39,41 @@ namespace RimWorldTranslationTool
             // 初始化版本選項
             InitializeGameVersions();
             
-            // 初始化時更新路徑顯示
-            UpdatePathDisplay();
-            
             // 設置選擇變更事件
             ModsDataGrid.SelectionChanged += ModsDataGrid_SelectionChanged;
+            
+            // 延遲更新 UI，確保控制項已初始化
+            this.Loaded += MainWindow_Loaded;
+        }
+        
+        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            // 一次性更新所有 UI 元素
+            UpdateAllUI();
+            
+            // 載入 ModsConfig.xml（如果設定中存在）
+            if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+            {
+                LoadModsConfig();
+            }
+        }
+        
+        private void UpdateAllUI()
+        {
+            // 更新路徑顯示
+            UpdatePathDisplay();
+            
+            // 更新 ModsConfigPath 顯示
+            if (ModsConfigPathText != null && !string.IsNullOrEmpty(_modsConfigPath))
+            {
+                ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
+            }
+            
+            // 更新遊戲版本選擇
+            if (GameVersionComboBox != null && !string.IsNullOrEmpty(_selectedGameVersion))
+            {
+                GameVersionComboBox.SelectedItem = _selectedGameVersion;
+            }
         }
         
         private void InitializeGameVersions()
@@ -51,6 +85,8 @@ namespace RimWorldTranslationTool
         
         private void LoadSettings()
         {
+            _isLoadingSettings = true;  // 開始載入設定
+            
             try
             {
                 if (File.Exists(SettingsFileName))
@@ -58,28 +94,49 @@ namespace RimWorldTranslationTool
                     var json = File.ReadAllText(SettingsFileName);
                     _settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                     
+                    // 調試信息
+                    System.Diagnostics.Debug.WriteLine($"=== 載入設定開始 ===");
+                    System.Diagnostics.Debug.WriteLine($"ModsDirectory: {_settings.ModsDirectory}");
+                    System.Diagnostics.Debug.WriteLine($"ModsConfigPath: {_settings.ModsConfigPath}");
+                    System.Diagnostics.Debug.WriteLine($"GameVersion: {_settings.GameVersion}");
+                    
                     // 恢復設定
                     if (!string.IsNullOrEmpty(_settings.ModsDirectory))
                     {
                         FolderPath = _settings.ModsDirectory;
+                        System.Diagnostics.Debug.WriteLine($"設定模組目錄: {FolderPath}");
                     }
                     
                     if (!string.IsNullOrEmpty(_settings.ModsConfigPath))
                     {
                         _modsConfigPath = _settings.ModsConfigPath;
-                        ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
+                        System.Diagnostics.Debug.WriteLine($"設定 ModsConfigPath: {_modsConfigPath}");
+                        System.Diagnostics.Debug.WriteLine($"檔案存在: {File.Exists(_modsConfigPath)}");
+                        
+                        // 不再在這裡更新 UI，改為在 MainWindow_Loaded 中統一處理
                     }
                     
                     if (!string.IsNullOrEmpty(_settings.GameVersion))
                     {
                         _selectedGameVersion = _settings.GameVersion;
-                        GameVersionComboBox.SelectedItem = _selectedGameVersion;
+                        System.Diagnostics.Debug.WriteLine($"設定遊戲版本: {_selectedGameVersion}");
                     }
+                    
+                    System.Diagnostics.Debug.WriteLine($"=== 載入設定完成 ===");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("設定檔案不存在，使用預設值");
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"載入設定失敗：{ex.Message}");
                 MessageBox.Show($"載入設定失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally
+            {
+                _isLoadingSettings = false;  // 完成載入設定
             }
         }
         
@@ -93,6 +150,11 @@ namespace RimWorldTranslationTool
                 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFileName, json);
+                
+                // 調試信息
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - ModsDirectory: {_settings.ModsDirectory}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - ModsConfigPath: {_settings.ModsConfigPath}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - GameVersion: {_settings.GameVersion}");
             }
             catch (Exception ex)
             {
@@ -115,6 +177,7 @@ namespace RimWorldTranslationTool
             }
         }
 
+        private bool _isLoadingSettings = false;
         public string FolderPath 
         { 
             get => _folderPath;
@@ -124,7 +187,12 @@ namespace RimWorldTranslationTool
                 {
                     _folderPath = value;
                     OnPropertyChanged(nameof(FolderPath));
-                    SaveSettings(); // 自動儲存設定
+                    
+                    // 只有在不是載入設定時才自動保存
+                    if (!_isLoadingSettings)
+                    {
+                        SaveSettings();
+                    }
                 }
             }
         }
@@ -332,6 +400,35 @@ namespace RimWorldTranslationTool
                 FolderPathTextBox.TextChanged -= FolderPathTextBox_TextChanged;
                 FolderPathTextBox.Text = FolderPath;
                 FolderPathTextBox.TextChanged += FolderPathTextBox_TextChanged;
+            }
+            
+            // 同時更新 ModsConfigPath 顯示和狀態
+            if (ModsConfigPathText != null && !string.IsNullOrEmpty(_modsConfigPath))
+            {
+                var fileName = Path.GetFileName(_modsConfigPath);
+                if (ModsConfigPathText.Text != fileName)
+                {
+                    ModsConfigPathText.Text = fileName;
+                }
+                
+                // 更新狀態顯示
+                if (ModsConfigStatusText != null)
+                {
+                    if (File.Exists(_modsConfigPath))
+                    {
+                        ModsConfigStatusText.Text = "✅";
+                        ModsConfigStatusText.Foreground = new SolidColorBrush(Colors.Green);
+                    }
+                    else
+                    {
+                        ModsConfigStatusText.Text = "⚠️ 檔案不存在";
+                        ModsConfigStatusText.Foreground = new SolidColorBrush(Colors.Orange);
+                    }
+                }
+            }
+            else if (ModsConfigStatusText != null)
+            {
+                ModsConfigStatusText.Text = "";
             }
         }
 
@@ -822,7 +919,11 @@ namespace RimWorldTranslationTool
             try
             {
                 if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
+                {
+                    // 如果沒有 ModsConfig.xml，按字母排序
+                    SortModsAlphabetically();
                     return;
+                }
                 
                 var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
                 var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
@@ -830,7 +931,10 @@ namespace RimWorldTranslationTool
                     .ToList();
                 
                 if (activeMods == null || activeMods.Count == 0)
+                {
+                    SortModsAlphabetically();
                     return;
+                }
                 
                 // 建立排序順序：已啟用的模組在前，按照 ModsConfig.xml 的順序
                 var sortedMods = _mods
@@ -846,17 +950,209 @@ namespace RimWorldTranslationTool
                 _mods = sortedMods;
                 ModsDataGrid.ItemsSource = null;
                 ModsDataGrid.ItemsSource = _mods;
+                
+                // 更新模組管理列表
+                UpdateModManagementLists();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"排序模組失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SortModsAlphabetically();
             }
+        }
+        
+        private void SortModsAlphabetically()
+        {
+            var sortedMods = _mods.OrderBy(mod => mod.Name).ToList();
+            _mods = sortedMods;
+            ModsDataGrid.ItemsSource = null;
+            ModsDataGrid.ItemsSource = _mods;
+            
+            // 更新模組管理列表
+            UpdateModManagementLists();
+        }
+        
+        private void UpdateModManagementLists()
+        {
+            // 檢查 UI 元素是否已初始化
+            if (ModPoolListBox == null || EnabledModsListBox == null)
+                return;
+                
+            // 更新模組池（所有模組，按字母排序）
+            _modPool = _mods.OrderBy(mod => mod.Name).ToList();
+            ModPoolListBox.ItemsSource = null;
+            ModPoolListBox.ItemsSource = _modPool;
+            
+            // 更新啟用列表（已啟用的模組，按載入順序）
+            _enabledMods = _mods.Where(mod => mod.IsEnabled).ToList();
+            
+            // 如果有 ModsConfig.xml，按其順序排序
+            if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+            {
+                try
+                {
+                    var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
+                    var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
+                        .Select(li => li.Value)
+                        .ToList();
+                    
+                    if (activeMods != null && activeMods.Count > 0)
+                    {
+                        _enabledMods = _enabledMods
+                            .OrderBy(mod => 
+                            {
+                                var index = activeMods.IndexOf(mod.PackageId);
+                                return index >= 0 ? index : activeMods.IndexOf(mod.FolderName);
+                            })
+                            .ToList();
+                    }
+                }
+                catch { }
+            }
+            
+            EnabledModsListBox.ItemsSource = null;
+            EnabledModsListBox.ItemsSource = _enabledMods;
         }
 
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+        
+        // 模組管理事件處理器
+        private void MoveToEnabled_Click(object sender, RoutedEventArgs e)
+        {
+            if (ModPoolListBox == null) return;
+            
+            try
+            {
+                var selectedMods = ModPoolListBox.SelectedItems.Cast<ModInfo>().ToList();
+                foreach (var mod in selectedMods)
+                {
+                    if (!mod.IsEnabled)
+                    {
+                        mod.IsEnabled = true;
+                    }
+                }
+                UpdateModManagementLists();
+                ModsDataGrid.Items.Refresh();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"移動模組失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void MoveToPool_Click(object sender, RoutedEventArgs e)
+        {
+            if (EnabledModsListBox == null) return;
+            
+            try
+            {
+                var selectedMods = EnabledModsListBox.SelectedItems.Cast<ModInfo>().ToList();
+                foreach (var mod in selectedMods)
+                {
+                    if (mod.IsEnabled)
+                    {
+                        mod.IsEnabled = false;
+                    }
+                }
+                UpdateModManagementLists();
+                ModsDataGrid.Items.Refresh();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"移動模組失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void SaveModsConfig_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_modsConfigPath))
+                {
+                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                
+                // 二次確認
+                var result = MessageBox.Show(
+                    $"確定要儲存模組配置嗎？\n\n將更新 {_enabledMods.Count} 個已啟用模組的載入順序。\n\n檔案位置：{_modsConfigPath}",
+                    "確認儲存",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+                
+                if (result != MessageBoxResult.Yes)
+                    return;
+                
+                var enabledModIds = _enabledMods
+                    .Select(mod => !string.IsNullOrEmpty(mod.PackageId) ? mod.PackageId : mod.FolderName)
+                    .ToList();
+                
+                var xml = new System.Xml.Linq.XDocument(
+                    new System.Xml.Linq.XElement("ModsConfigData",
+                        new System.Xml.Linq.XElement("activeMods",
+                            enabledModIds.Select(id => new System.Xml.Linq.XElement("li", id))
+                        )
+                    )
+                );
+                
+                xml.Save(_modsConfigPath);
+                MessageBox.Show("ModsConfig.xml 已儲存成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                StatusTextBlock.Text = "配置已儲存";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"儲存失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void ModPoolListBox_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                // 實現拖拽功能（從啟用列表拖到模組池）
+                if (e.Data.GetDataPresent(typeof(ModInfo)))
+                {
+                    var mod = e.Data.GetData(typeof(ModInfo)) as ModInfo;
+                    if (mod != null && mod.IsEnabled)
+                    {
+                        mod.IsEnabled = false;
+                        UpdateModManagementLists();
+                        ModsDataGrid.Items.Refresh();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 拖拽操作失敗，靜默處理
+                System.Diagnostics.Debug.WriteLine($"拖拽失敗：{ex.Message}");
+            }
+        }
+        
+        private void EnabledModsListBox_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                // 實現拖拽功能（從模組池拖到啟用列表）
+                if (e.Data.GetDataPresent(typeof(ModInfo)))
+                {
+                    var mod = e.Data.GetData(typeof(ModInfo)) as ModInfo;
+                    if (mod != null && !mod.IsEnabled)
+                    {
+                        mod.IsEnabled = true;
+                        UpdateModManagementLists();
+                        ModsDataGrid.Items.Refresh();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 拖拽操作失敗，靜默處理
+                System.Diagnostics.Debug.WriteLine($"拖拽失敗：{ex.Message}");
+            }
         }
     }
 

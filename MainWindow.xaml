@@ -148,6 +148,15 @@
                                     <Setter Property="BorderThickness" Value="0,0,0,1"/>
                                 </Style>
                             </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                            <Setter Property="Opacity" Value="0.5"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
                             <DataGrid.CellStyle>
                                 <Style TargetType="DataGridCell">
                                     <Setter Property="Padding" Value="12,8"/>
@@ -216,6 +225,14 @@
                                         </Style>
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
+                                <DataGridCheckBoxColumn Header="啟用" Binding="{Binding IsEnabled}" Width="50">
+                                    <DataGridCheckBoxColumn.ElementStyle>
+                                        <Style TargetType="CheckBox">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridCheckBoxColumn.ElementStyle>
+                                </DataGridCheckBoxColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </Border>
@@ -284,6 +301,100 @@
                                 </StackPanel>
                             </StackPanel>
                         </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+            
+            <!-- 模組管理頁籤 -->
+            <TabItem Header="🔧 模組管理">
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- 底部操作區 -->
+                    <Border Grid.Column="0" Grid.ColumnSpan="3" Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Button Content="✅ 啟用選中" Style="{StaticResource PrimaryButtonStyle}" 
+                                    Click="MoveToEnabled_Click" Margin="0,0,12,0"/>
+                            <Button Content="❌ 停用選中" Style="{StaticResource SecondaryButtonStyle}" 
+                                    Click="MoveToPool_Click" Margin="0,0,12,0"/>
+                            <Button Content="🔄 重新整理" Style="{StaticResource SecondaryButtonStyle}" 
+                                    Click="RefreshModLists_Click" Margin="0,0,12,0"/>
+                            <Button Content="💾 儲存配置" Style="{StaticResource PrimaryButtonStyle}" 
+                                    Click="SaveModsConfig_Click"/>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- 左側：模組池 -->
+                    <Border Grid.Column="0" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            
+                            <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                                <TextBlock Text="📦 模組池" Style="{StaticResource SubHeaderTextStyle}"/>
+                                <TextBlock Text="所有可用模組（按字母排序）" Style="{StaticResource LabelTextStyle}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            
+                            <ListBox x:Name="ModPoolListBox" Grid.Row="1" 
+                                     SelectionMode="Extended"
+                                     AllowDrop="True"
+                                     Drop="ModPoolListBox_Drop"
+                                     Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="White" CornerRadius="6" Padding="12,8" Margin="0,2">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"/>
+                                                <TextBlock Text="{Binding Author}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- 中間：操作區 -->
+                    <Grid Grid.Column="1" VerticalAlignment="Center" Margin="16,0">
+                        <!-- 移除中間按鈕，改為底部統一操作 -->
+                    </Grid>
+                    
+                    <!-- 右側：啟用列表 -->
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            
+                            <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                                <TextBlock Text="✅ 啟用列表" Style="{StaticResource SubHeaderTextStyle}"/>
+                                <TextBlock Text="已啟用模組（按載入順序）" Style="{StaticResource LabelTextStyle}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            
+                            <ListBox x:Name="EnabledModsListBox" Grid.Row="1"
+                                     SelectionMode="Extended"
+                                     AllowDrop="True"
+                                     Drop="EnabledModsListBox_Drop"
+                                     Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#F0FDF4" CornerRadius="6" Padding="12,8" Margin="0,2">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"/>
+                                                <TextBlock Text="{Binding Author}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
                     </Border>
                 </Grid>
             </TabItem>
