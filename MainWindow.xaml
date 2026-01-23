@@ -228,6 +228,8 @@
                                             <Setter Property="Opacity" Value="0.5"/>
                                         </DataTrigger>
                                     </Style.Triggers>
+                                    <EventSetter Event="MouseEnter" Handler="DataGridRow_MouseEnter"/>
+                                    <EventSetter Event="MouseLeave" Handler="DataGridRow_MouseLeave"/>
                                 </Style>
                             </DataGrid.RowStyle>
                             <DataGrid.CellStyle>
@@ -409,6 +411,12 @@
                                      AllowDrop="True"
                                      Drop="ModPoolListBox_Drop"
                                      Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <EventSetter Event="MouseEnter" Handler="ListBoxItem_MouseEnter"/>
+                                        <EventSetter Event="MouseLeave" Handler="ListBoxItem_MouseLeave"/>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="White" CornerRadius="6" Padding="12,8" Margin="0,2">
@@ -446,6 +454,12 @@
                                      AllowDrop="True"
                                      Drop="EnabledModsListBox_Drop"
                                      Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <EventSetter Event="MouseEnter" Handler="ListBoxItem_MouseEnter"/>
+                                        <EventSetter Event="MouseLeave" Handler="ListBoxItem_MouseLeave"/>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="#F0FDF4" CornerRadius="6" Padding="12,8" Margin="0,2">

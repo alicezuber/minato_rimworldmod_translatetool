@@ -830,19 +830,44 @@ namespace RimWorldTranslationTool
                     
                     // 2. 掃描 Data 資料夾中的核心模組
                     var dataPath = Path.Combine(GamePath, "Data");
+                    
+                    // 強制寫入日誌
+                    Logger.Log($"=== 開始檢查 Data 資料夾 ===");
+                    Logger.Log($"GamePath: {GamePath}");
+                    Logger.Log($"檢查 Data 資料夾: {dataPath}");
+                    
                     if (Directory.Exists(dataPath))
                     {
                         var dataDirs = Directory.GetDirectories(dataPath);
+                        Logger.Log($"找到 {dataDirs.Length} 個 Data 子資料夾");
+                        
+                        // 列出所有子資料夾
                         foreach (var dir in dataDirs)
                         {
-                            // 檢查是否有 About.xml
-                            var aboutPath = Path.Combine(dir, "About.xml");
-                            if (File.Exists(aboutPath))
+                            var folderName = Path.GetFileName(dir);
+                            Logger.Log($"  Data子資料夾: {folderName}");
+                        }
+                        
+                        foreach (var dir in dataDirs)
+                        {
+                            var folderName = Path.GetFileName(dir);
+                            // 檢查是否有 About\About.xml (核心模組結構)
+                            var aboutPath = Path.Combine(dir, "About", "About.xml");
+                            var aboutExists = File.Exists(aboutPath);
+                            
+                            Logger.Log($"檢查核心模組: {folderName} - About\\About.xml存在: {aboutExists}");
+                            if (aboutExists)
                             {
                                 allDirectories.Add(dir);
-                                System.Diagnostics.Debug.WriteLine($"掃描核心模組: {dir}");
+                                Logger.Log($"✅ 掃描核心模組: {dir}");
                             }
                         }
+                        
+                        Logger.Log($"=== Data 資料夾掃描完成，新增 {allDirectories.Count(d => d.Contains("\\Data\\"))} 個核心模組 ===");
+                    }
+                    else
+                    {
+                        Logger.LogWarning($"Data 資料夾不存在: {dataPath}");
                     }
                 }
                 
@@ -920,9 +945,17 @@ namespace RimWorldTranslationTool
         {
             try
             {
+                // 支援兩種 About.xml 路徑
                 string aboutPath = Path.Combine(modPath, "About", "About.xml");
                 if (!File.Exists(aboutPath))
-                    return null;
+                {
+                    // 嘗試核心模組路徑 (Data/Core/About.xml)
+                    aboutPath = Path.Combine(modPath, "About.xml");
+                    if (!File.Exists(aboutPath))
+                    {
+                        return null;
+                    }
+                }
 
                 var aboutXml = System.Xml.Linq.XDocument.Load(aboutPath);
                 var meta = aboutXml.Element("ModMetaData");
@@ -954,8 +987,13 @@ namespace RimWorldTranslationTool
                     IsVersionCompatible = IsVersionCompatible(GetVersionsString(meta.Element("supportedVersions")))
                 };
 
-                // 載入預覽圖
+                // 載入預覽圖 - 支援兩種路徑
                 string previewPath = Path.Combine(modPath, "About", "Preview.png");
+                if (!File.Exists(previewPath))
+                {
+                    // 嘗試核心模組路徑
+                    previewPath = Path.Combine(modPath, "Preview.png");
+                }
                 if (File.Exists(previewPath))
                 {
                     try
@@ -1340,28 +1378,59 @@ namespace RimWorldTranslationTool
                 {
                     bool wasEnabled = mod.IsEnabled;
                     
-                    // 更嚴格的匹配邏輯
+                    // 更嚴格的匹配邏輯 - 使用大小寫不敏感匹配
                     bool packageIdMatch = !string.IsNullOrEmpty(mod.PackageId) && 
-                                        activeMods.Contains(mod.PackageId);
+                                        activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
                     bool folderNameMatch = !string.IsNullOrEmpty(mod.FolderName) && 
-                                         activeMods.Contains(mod.FolderName);
+                                         activeMods.Any(id => id.Equals(mod.FolderName, StringComparison.OrdinalIgnoreCase));
                     
                     mod.IsEnabled = packageIdMatch || folderNameMatch;
                         
                     if (mod.IsEnabled)
                     {
                         matchedCount++;
-                        System.Diagnostics.Debug.WriteLine($"✅ 啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
-                        System.Diagnostics.Debug.WriteLine($"    匹配方式: {(packageIdMatch ? "PackageId" : "FolderName")}");
+                        Logger.LogSuccess($"啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        Logger.Log($"  匹配方式: {(packageIdMatch ? "PackageId" : "FolderName")}");
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"❌ 未啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        Logger.LogWarning($"未啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        
+                        // 詳細調試：檢查為什麼沒匹配到
+                        if (!string.IsNullOrEmpty(mod.PackageId))
+                        {
+                            var exactMatch = activeMods.Contains(mod.PackageId);
+                            var caseMatch = activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
+                            var trimMatch = activeMods.Any(id => id.Trim() == mod.PackageId.Trim());
+                            
+                            Logger.Log($"PackageId詳細分析:");
+                            Logger.Log($"  PackageId長度: {mod.PackageId.Length}");
+                            Logger.Log($"  PackageId bytes: [{string.Join(",", System.Text.Encoding.UTF8.GetBytes(mod.PackageId))}]");
+                            Logger.Log($"  精確匹配: {exactMatch}");
+                            Logger.Log($"  忽略大小寫匹配: {caseMatch}");
+                            Logger.Log($"  去空白匹配: {trimMatch}");
+                            
+                            // 找出相似的ID
+                            var similarIds = activeMods.Where(id => 
+                                id.Contains(mod.PackageId) || mod.PackageId.Contains(id)).Take(3);
+                            if (similarIds.Any())
+                            {
+                                Logger.Log($"  相似的啟用ID: {string.Join(", ", similarIds)}");
+                            }
+                            else
+                            {
+                                Logger.Log($"  沒有找到相似的啟用ID");
+                            }
+                        }
+                        else
+                        {
+                            Logger.LogWarning($"PackageId為空或null");
+                        }
                     }
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"匹配到的啟用模組: {matchedCount}");
-                System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入完成 ===");
+                Logger.LogInfo($"匹配到的啟用模組: {matchedCount}");
+                Logger.Log("=== ModsConfig.xml 載入完成 ===");
                 
                 // 刷新顯示
                 ModsDataGrid.Items.Refresh();
@@ -1387,11 +1456,11 @@ namespace RimWorldTranslationTool
                     var missingCount = activeMods.Count - matchedCount;
                     System.Diagnostics.Debug.WriteLine($"顯示部分匹配訊息，缺少 {missingCount} 個模組");
                     
-                    // 找出未匹配的模組ID
+                    // 找出未匹配的模組ID - 使用大小寫不敏感匹配
                     var unmatchedIds = activeMods.Where(id => 
                         !_mods.Any(mod => 
-                            (!string.IsNullOrEmpty(mod.PackageId) && mod.PackageId == id) ||
-                            (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName == id))).Take(20);
+                            (!string.IsNullOrEmpty(mod.PackageId) && mod.PackageId.Equals(id, StringComparison.OrdinalIgnoreCase)) ||
+                            (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName.Equals(id, StringComparison.OrdinalIgnoreCase)))).Take(20);
                     
                     var details = $"啟用模組數量: {activeMods.Count}\n" +
                                  $"匹配到的模組: {matchedCount}\n" +
@@ -2009,6 +2078,140 @@ namespace RimWorldTranslationTool
                 // 拖拽操作失敗，靜默處理
                 System.Diagnostics.Debug.WriteLine($"拖拽失敗：{ex.Message}");
             }
+        }
+        
+        // 懸停預覽功能
+        private ToolTip? _hoverToolTip;
+        private Image? _hoverImage;
+        
+        private void DataGridRow_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is DataGridRow row && row.DataContext is ModInfo mod)
+            {
+                if (mod.PreviewImage != null)
+                {
+                    // 創建懸停預覽
+                    CreateHoverToolTip(mod);
+                    
+                    // 顯示ToolTip
+                    if (_hoverToolTip != null)
+                    {
+                        _hoverToolTip.IsOpen = true;
+                    }
+                }
+            }
+        }
+        
+        private void DataGridRow_MouseLeave(object sender, MouseEventArgs e)
+        {
+            // 隱藏並清理ToolTip
+            if (_hoverToolTip != null)
+            {
+                _hoverToolTip.IsOpen = false;
+                _hoverToolTip = null;
+                _hoverImage = null;
+            }
+        }
+        
+        private void ListBoxItem_MouseEnter(object sender, MouseEventArgs e)
+        {
+            if (sender is ListBoxItem item && item.DataContext is ModInfo mod)
+            {
+                if (mod.PreviewImage != null)
+                {
+                    // 創建懸停預覽
+                    CreateHoverToolTip(mod);
+                    
+                    // 顯示ToolTip
+                    if (_hoverToolTip != null)
+                    {
+                        _hoverToolTip.IsOpen = true;
+                    }
+                }
+            }
+        }
+        
+        private void ListBoxItem_MouseLeave(object sender, MouseEventArgs e)
+        {
+            // 隱藏並清理ToolTip
+            if (_hoverToolTip != null)
+            {
+                _hoverToolTip.IsOpen = false;
+                _hoverToolTip = null;
+                _hoverImage = null;
+            }
+        }
+        
+        private void CreateHoverToolTip(ModInfo mod)
+        {
+            _hoverToolTip = new ToolTip
+            {
+                Background = Brushes.White,
+                BorderBrush = new SolidColorBrush(Color.FromArgb(255, 229, 231, 235)),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(8),
+                MaxWidth = 300,
+                MaxHeight = 400
+            };
+            
+            var stackPanel = new StackPanel();
+            
+            // 預覽圖片
+            if (mod.PreviewImage != null)
+            {
+                _hoverImage = new Image
+                {
+                    Source = mod.PreviewImage,
+                    MaxWidth = 280,
+                    MaxHeight = 280,
+                    Stretch = Stretch.Uniform,
+                    Margin = new Thickness(0, 0, 0, 8)
+                };
+                stackPanel.Children.Add(_hoverImage);
+            }
+            
+            // 模組名稱
+            var nameText = new TextBlock
+            {
+                Text = mod.Name,
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+            stackPanel.Children.Add(nameText);
+            
+            // 作者
+            var authorText = new TextBlock
+            {
+                Text = $"作者: {mod.Author}",
+                FontSize = 12,
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128)),
+                Margin = new Thickness(0, 0, 0, 2)
+            };
+            stackPanel.Children.Add(authorText);
+            
+            // PackageId
+            var packageIdText = new TextBlock
+            {
+                Text = $"ID: {mod.PackageId}",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 0, 0, 2)
+            };
+            stackPanel.Children.Add(packageIdText);
+            
+            // 版本
+            var versionText = new TextBlock
+            {
+                Text = $"版本: {mod.SupportedVersions}",
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromArgb(255, 107, 114, 128))
+            };
+            stackPanel.Children.Add(versionText);
+            
+            _hoverToolTip.Content = stackPanel;
         }
     }
 
