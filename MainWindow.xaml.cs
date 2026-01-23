@@ -574,7 +574,10 @@ namespace RimWorldTranslationTool
                 }
             }
             
-            // 4. 更新預覽面板（如果有選中的模組）
+            // 4. 根據 ModsConfig.xml 排序
+            SortModsByConfig();
+            
+            // 5. 更新預覽面板（如果有選中的模組）
             if (SelectedMod != null)
             {
                 UpdatePreviewPanel();
@@ -814,6 +817,42 @@ namespace RimWorldTranslationTool
             }
         }
 
+        private void SortModsByConfig()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
+                    return;
+                
+                var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
+                var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
+                    .Select(li => li.Value)
+                    .ToList();
+                
+                if (activeMods == null || activeMods.Count == 0)
+                    return;
+                
+                // 建立排序順序：已啟用的模組在前，按照 ModsConfig.xml 的順序
+                var sortedMods = _mods
+                    .OrderByDescending(mod => activeMods.Contains(mod.PackageId) || activeMods.Contains(mod.FolderName))
+                    .ThenBy(mod => 
+                    {
+                        var index = activeMods.IndexOf(mod.PackageId);
+                        return index >= 0 ? index : activeMods.IndexOf(mod.FolderName);
+                    })
+                    .ThenBy(mod => mod.Name)
+                    .ToList();
+                
+                _mods = sortedMods;
+                ModsDataGrid.ItemsSource = null;
+                ModsDataGrid.ItemsSource = _mods;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"排序模組失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName)
         {
@@ -857,7 +896,7 @@ namespace RimWorldTranslationTool
         public Brush HasTranslationPatchBackground => GetStatusBackground(HasTranslationPatch);
         public Brush CanTranslateBackground => GetStatusBackground(CanTranslate);
         public Brush VersionCompatibilityBackground => IsVersionCompatible ? 
-            new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)) : new SolidColorBrush(Color.FromArgb(128, 255, 255, 0));
+            new SolidColorBrush(Colors.Transparent) : new SolidColorBrush(Color.FromArgb(50, 255, 255, 0));
         
         private Brush GetStatusColor(string status)
         {
@@ -875,7 +914,7 @@ namespace RimWorldTranslationTool
             {
                 "有" or "是" => new SolidColorBrush(Color.FromArgb(50, 0, 255, 0)),
                 "無" or "否" => new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)),
-                _ => new SolidColorBrush(Color.FromArgb(50, 0, 0, 0))
+                _ => new SolidColorBrush(Colors.Transparent) // 正常狀態無底色
             };
         }
     }
