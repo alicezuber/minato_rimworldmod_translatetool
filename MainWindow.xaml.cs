@@ -46,6 +46,17 @@ namespace RimWorldTranslationTool
         private AppSettings _settings = new AppSettings();
         private const string SettingsFileName = "RimWorldTranslationTool_Settings.json";
         
+        // 簡化的路徑設定 - 只需要遊戲路徑
+        private string _gamePath = "";
+        
+        // 自動推導的路徑
+        private string WorkshopPath => !string.IsNullOrEmpty(_gamePath) ? 
+            Path.Combine(Path.GetDirectoryName(_gamePath) ?? "", "workshop", "content", "294100") : "";
+        
+        private string ConfigPath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
+            "..", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios");
+        
         // 模組管理相關
         private List<ModInfo> _modPool = new List<ModInfo>();
         private List<ModInfo> _enabledMods = new List<ModInfo>();
@@ -73,18 +84,9 @@ namespace RimWorldTranslationTool
             // 一次性更新所有 UI 元素
             UpdateAllUI();
             
-            // 延遲載入 ModsConfig.xml，確保 UI 完全準備好
-            System.Threading.Tasks.Task.Delay(500).ContinueWith(async _ =>
-            {
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    // 載入 ModsConfig.xml（如果設定中存在）
-                    if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
-                    {
-                        LoadModsConfig();
-                    }
-                });
-            });
+            // 不要在啟動時立即載入 ModsConfig.xml
+            // 等待用戶掃描模組後再載入
+            System.Diagnostics.Debug.WriteLine("程式啟動完成，等待用戶掃描模組...");
         }
         
         private void UpdateAllUI()
@@ -107,7 +109,10 @@ namespace RimWorldTranslationTool
         
         private void InitializeGameVersions()
         {
-            var versions = new[] { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6" };
+            var versions = new[] { 
+                "0.14", "0.15", "0.16", "0.17", "0.18", "0.19", 
+                "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6" 
+            };
             GameVersionComboBox.ItemsSource = versions;
             GameVersionComboBox.SelectedItem = _selectedGameVersion;
         }
@@ -127,29 +132,17 @@ namespace RimWorldTranslationTool
                     System.Diagnostics.Debug.WriteLine($"=== 載入設定開始 ===");
                     System.Diagnostics.Debug.WriteLine($"ModsDirectory: {_settings.ModsDirectory}");
                     System.Diagnostics.Debug.WriteLine($"ModsConfigPath: {_settings.ModsConfigPath}");
-                    System.Diagnostics.Debug.WriteLine($"GameVersion: {_settings.GameVersion}");
                     
-                    // 恢復設定
-                    if (!string.IsNullOrEmpty(_settings.ModsDirectory))
-                    {
-                        FolderPath = _settings.ModsDirectory;
-                        System.Diagnostics.Debug.WriteLine($"設定模組目錄: {FolderPath}");
-                    }
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - WorkshopPath: {_settings.WorkshopPath}");
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - GamePath: {_settings.GamePath}");
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - ConfigPath: {_settings.ConfigPath}");
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - ModsConfigPath: {_settings.ModsConfigPath}");
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - GameVersion: {_settings.GameVersion}");
                     
-                    if (!string.IsNullOrEmpty(_settings.ModsConfigPath))
-                    {
-                        _modsConfigPath = _settings.ModsConfigPath;
-                        System.Diagnostics.Debug.WriteLine($"設定 ModsConfigPath: {_modsConfigPath}");
-                        System.Diagnostics.Debug.WriteLine($"檔案存在: {File.Exists(_modsConfigPath)}");
-                        
-                        // 不再在這裡更新 UI，改為在 MainWindow_Loaded 中統一處理
-                    }
-                    
-                    if (!string.IsNullOrEmpty(_settings.GameVersion))
-                    {
-                        _selectedGameVersion = _settings.GameVersion;
-                        System.Diagnostics.Debug.WriteLine($"設定遊戲版本: {_selectedGameVersion}");
-                    }
+                    // 載入新設定
+                    GamePath = _settings.GamePath;
+                    _modsConfigPath = _settings.ModsConfigPath;
+                    _selectedGameVersion = _settings.GameVersion;
                     
                     System.Diagnostics.Debug.WriteLine($"=== 載入設定完成 ===");
                 }
@@ -161,7 +154,7 @@ namespace RimWorldTranslationTool
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"載入設定失敗：{ex.Message}");
-                MessageBox.Show($"載入設定失敗：{ex.Message}", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ShowErrorWithCopy("載入設定失敗", $"載入設定時發生錯誤", ex.ToString());
             }
             finally
             {
@@ -173,7 +166,7 @@ namespace RimWorldTranslationTool
         {
             try
             {
-                _settings.ModsDirectory = FolderPath;
+                _settings.GamePath = GamePath;
                 _settings.ModsConfigPath = _modsConfigPath;
                 _settings.GameVersion = _selectedGameVersion;
                 
@@ -181,7 +174,9 @@ namespace RimWorldTranslationTool
                 File.WriteAllText(SettingsFileName, json);
                 
                 // 調試信息
-                System.Diagnostics.Debug.WriteLine($"儲存設定 - ModsDirectory: {_settings.ModsDirectory}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - WorkshopPath: {_settings.WorkshopPath}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - GamePath: {_settings.GamePath}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - ConfigPath: {_settings.ConfigPath}");
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - ModsConfigPath: {_settings.ModsConfigPath}");
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - GameVersion: {_settings.GameVersion}");
             }
@@ -191,9 +186,53 @@ namespace RimWorldTranslationTool
             }
         }
 
-        private string _folderPath = "";
-        public ModInfo? SelectedMod
-        {
+        // 簡化的屬性 - 只需要遊戲路徑
+        public string GamePath 
+        { 
+            get => _gamePath;
+            set
+            {
+                if (_gamePath != value)
+                {
+                    _gamePath = value;
+                    OnPropertyChanged(nameof(GamePath));
+                    OnPropertyChanged(nameof(FolderPath));
+                    OnPropertyChanged(nameof(WorkshopPath)); // 通知自動推導的路徑也更新
+                    OnPropertyChanged(nameof(ConfigPath));
+                    
+                    // 只有在不是載入設定時才自動保存
+                    if (!_isLoadingSettings)
+                    {
+                        SaveSettings();
+                    }
+                }
+            }
+        }
+        
+        public string FolderPath 
+        { 
+            get => _gamePath; // 現在 FolderPath 指向遊戲路徑
+            set
+            {
+                if (_gamePath != value)
+                {
+                    _gamePath = value;
+                    OnPropertyChanged(nameof(FolderPath));
+                    OnPropertyChanged(nameof(GamePath));
+                    OnPropertyChanged(nameof(WorkshopPath)); // 通知自動推導的路徑也更新
+                    OnPropertyChanged(nameof(ConfigPath));
+                    
+                    // 只有在不是載入設定時才自動保存
+                    if (!_isLoadingSettings)
+                    {
+                        SaveSettings();
+                    }
+                }
+            }
+        }
+
+        public ModInfo? SelectedMod 
+        { 
             get => _selectedMod;
             set
             {
@@ -207,24 +246,6 @@ namespace RimWorldTranslationTool
         }
 
         private bool _isLoadingSettings = false;
-        public string FolderPath 
-        { 
-            get => _folderPath;
-            set
-            {
-                if (_folderPath != value)
-                {
-                    _folderPath = value;
-                    OnPropertyChanged(nameof(FolderPath));
-                    
-                    // 只有在不是載入設定時才自動保存
-                    if (!_isLoadingSettings)
-                    {
-                        SaveSettings();
-                    }
-                }
-            }
-        }
 
         private void GameVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -265,32 +286,89 @@ namespace RimWorldTranslationTool
             return versions.Contains(_selectedGameVersion);
         }
 
-        private void FolderPathTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        private void GamePathTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textBox)
             {
                 // 避免無限遞迴：只有當值真正改變時才更新
-                if (textBox.Text != FolderPath)
+                if (textBox.Text != GamePath)
                 {
-                    FolderPath = textBox.Text;
+                    GamePath = textBox.Text;
                 }
             }
         }
 
-        private void BrowseButton_Click(object sender, RoutedEventArgs e)
+        private void BrowseGameButton_Click(object sender, RoutedEventArgs e)
         {
-            using var dialog = new System.Windows.Forms.FolderBrowserDialog
-            {
-                Description = "選擇 RimWorld 模組目錄",
-                ShowNewFolderButton = false,
-                SelectedPath = !string.IsNullOrEmpty(FolderPath) ? FolderPath : 
-                    (!string.IsNullOrEmpty(_settings.ModsDirectory) ? _settings.ModsDirectory : "")
-            };
+            using var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            dialog.Description = "選擇 RimWorld 遊戲目錄 (steamapps\\common\\RimWorld)";
+            dialog.ShowNewFolderButton = false;
+            dialog.SelectedPath = GamePath;
             
             var result = dialog.ShowDialog();
             if (result == System.Windows.Forms.DialogResult.OK)
             {
-                FolderPath = dialog.SelectedPath; // 會自動觸發 SaveSettings
+                GamePath = dialog.SelectedPath;
+            }
+        }
+        
+        private void AutoDetectPaths_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var detectedGamePath = DetectRimWorldGamePath();
+                
+                if (detectedGamePath != null)
+                {
+                    GamePath = detectedGamePath;
+                    ShowInfoMessage("檢測成功", "已自動檢測到 RimWorld 遊戲目錄");
+                }
+                else
+                {
+                    ShowInfoMessage("檢測失敗", "無法自動檢測到 RimWorld 路徑，請手動設定");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowErrorWithCopy("自動檢測失敗", "自動檢測 RimWorld 路徑時發生錯誤", ex.ToString());
+            }
+        }
+        
+        private string? DetectRimWorldGamePath()
+        {
+            try
+            {
+                // 檢測 Steam 安裝目錄
+                var steamPaths = new[]
+                {
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Steam"),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Steam"),
+                    @"C:\Steam",
+                    @"D:\Steam",
+                    @"E:\Steam"
+                };
+                
+                foreach (var steamPath in steamPaths)
+                {
+                    if (Directory.Exists(steamPath))
+                    {
+                        // 檢測遊戲路徑
+                        var gamePathCandidate = Path.Combine(steamPath, "steamapps", "common", "RimWorld");
+                        if (Directory.Exists(gamePathCandidate))
+                        {
+                            return gamePathCandidate;
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"自動檢測路徑時發生錯誤: {ex.Message}");
+                return null;
             }
         }
 
@@ -422,13 +500,12 @@ namespace RimWorldTranslationTool
         
         private void UpdatePathDisplay()
         {
-            // 確保文字框顯示當前路徑，但避免觸發 TextChanged 事件
-            if (FolderPathTextBox != null && FolderPathTextBox.Text != FolderPath)
+            // 更新遊戲路徑文字框顯示
+            if (GamePathTextBox != null && GamePathTextBox.Text != GamePath)
             {
-                // 移除事件處理器以避免無限遞迴
-                FolderPathTextBox.TextChanged -= FolderPathTextBox_TextChanged;
-                FolderPathTextBox.Text = FolderPath;
-                FolderPathTextBox.TextChanged += FolderPathTextBox_TextChanged;
+                GamePathTextBox.TextChanged -= GamePathTextBox_TextChanged;
+                GamePathTextBox.Text = GamePath;
+                GamePathTextBox.TextChanged += GamePathTextBox_TextChanged;
             }
             
             // 同時更新 ModsConfigPath 顯示和狀態
@@ -465,7 +542,11 @@ namespace RimWorldTranslationTool
         {
             if (!IsValidModDirectory(FolderPath))
             {
-                MessageBox.Show("請先選擇有效的模組目錄", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                string errorMsg = "請確保路徑設定正確：\n\n" +
+                                 "🎯 遊戲路徑：應指向 RimWorld 遊戲目錄 (steamapps\\common\\RimWorld)\n" +
+                                 "📦 工作坊路徑：應指向 Steam 工作坊 (steamapps\\workshop\\content\\294100)\n\n" +
+                                 "至少需要一個路徑包含有效的模組資料夾。";
+                ShowErrorWithCopy("路徑驗證失敗", "無法找到有效的模組目錄", errorMsg);
                 return;
             }
 
@@ -474,12 +555,85 @@ namespace RimWorldTranslationTool
 
         private bool IsValidModDirectory(string path)
         {
-            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
-                return false;
+            // 調試：輸出當前路徑狀態
+            System.Diagnostics.Debug.WriteLine("=== 路徑驗證開始 ===");
+            System.Diagnostics.Debug.WriteLine($"遊戲路徑: {path}");
+            System.Diagnostics.Debug.WriteLine($"工作坊路徑: {WorkshopPath}");
             
-            // 檢查是否至少包含一個 About/About.xml 檔案
-            return Directory.GetDirectories(path)
-                .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
+            // 檢查遊戲路徑是否有效
+            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            {
+                System.Diagnostics.Debug.WriteLine("❌ 遊戲路徑無效");
+                return false;
+            }
+            
+            // 檢查是否包含至少一個有效的模組位置
+            bool hasValidModLocation = false;
+            
+            // 1. 檢查 Mods 資料夾
+            var modsPath = Path.Combine(path, "Mods");
+            System.Diagnostics.Debug.WriteLine($"檢查 Mods 資料夾: {modsPath}");
+            if (Directory.Exists(modsPath))
+            {
+                var modsDirs = Directory.GetDirectories(modsPath);
+                System.Diagnostics.Debug.WriteLine($"  找到 {modsDirs.Length} 個資料夾");
+                
+                var hasMods = modsDirs
+                    .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
+                System.Diagnostics.Debug.WriteLine($"  有有效模組: {hasMods}");
+                if (hasMods) hasValidModLocation = true;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("  Mods 資料夾不存在");
+            }
+            
+            // 2. 檢查 Data 資料夾（核心模組）
+            var dataPath = Path.Combine(path, "Data");
+            System.Diagnostics.Debug.WriteLine($"檢查 Data 資料夾: {dataPath}");
+            if (Directory.Exists(dataPath))
+            {
+                var dataDirs = Directory.GetDirectories(dataPath);
+                System.Diagnostics.Debug.WriteLine($"  找到 {dataDirs.Length} 個資料夾");
+                
+                var hasCoreMods = dataDirs
+                    .Any(dir => File.Exists(Path.Combine(dir, "About.xml")));
+                System.Diagnostics.Debug.WriteLine($"  有核心模組: {hasCoreMods}");
+                if (hasCoreMods) hasValidModLocation = true;
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("  Data 資料夾不存在");
+            }
+            
+            // 3. 如果有設定工作坊路徑，也檢查工作坊
+            if (!string.IsNullOrEmpty(WorkshopPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"檢查工作坊路徑: {WorkshopPath}");
+                if (Directory.Exists(WorkshopPath))
+                {
+                    var workshopDirs = Directory.GetDirectories(WorkshopPath);
+                    System.Diagnostics.Debug.WriteLine($"  找到 {workshopDirs.Length} 個資料夾");
+                    
+                    var hasWorkshopMods = workshopDirs
+                        .Any(dir => File.Exists(Path.Combine(dir, "About", "About.xml")));
+                    System.Diagnostics.Debug.WriteLine($"  有工作坊模組: {hasWorkshopMods}");
+                    if (hasWorkshopMods) hasValidModLocation = true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("  工作坊路徑不存在");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("工作坊路徑未設定");
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"最終結果: {hasValidModLocation}");
+            System.Diagnostics.Debug.WriteLine("=== 路徑驗證結束 ===");
+            
+            return hasValidModLocation;
         }
 
         private async Task ScanModsAsync()
@@ -489,7 +643,6 @@ namespace RimWorldTranslationTool
                 // 顯示進度條
                 ProgressPanel.Visibility = Visibility.Visible;
                 ScanButton.IsEnabled = false;
-                BrowseButton.IsEnabled = false;
                 
                 StatusTextBlock.Text = "正在掃描模組...";
                 ProgressTextBlock.Text = "準備掃描...";
@@ -498,15 +651,54 @@ namespace RimWorldTranslationTool
                 _mods.Clear();
                 ModsDataGrid.ItemsSource = null;
 
-                var directories = Directory.GetDirectories(FolderPath);
-                int total = directories.Length;
+                var allDirectories = new List<string>();
+                
+                // 1. 掃描本體模組 (Mods 資料夾)
+                if (!string.IsNullOrEmpty(GamePath))
+                {
+                    var modsPath = Path.Combine(GamePath, "Mods");
+                    if (Directory.Exists(modsPath))
+                    {
+                        allDirectories.AddRange(Directory.GetDirectories(modsPath));
+                        System.Diagnostics.Debug.WriteLine($"掃描本體模組: {modsPath}");
+                    }
+                    
+                    // 2. 掃描 Data 資料夾中的核心模組
+                    var dataPath = Path.Combine(GamePath, "Data");
+                    if (Directory.Exists(dataPath))
+                    {
+                        var dataDirs = Directory.GetDirectories(dataPath);
+                        foreach (var dir in dataDirs)
+                        {
+                            // 檢查是否有 About.xml
+                            var aboutPath = Path.Combine(dir, "About.xml");
+                            if (File.Exists(aboutPath))
+                            {
+                                allDirectories.Add(dir);
+                                System.Diagnostics.Debug.WriteLine($"掃描核心模組: {dir}");
+                            }
+                        }
+                    }
+                }
+                
+                // 3. 掃描工作坊模組
+                if (!string.IsNullOrEmpty(WorkshopPath))
+                {
+                    if (Directory.Exists(WorkshopPath))
+                    {
+                        allDirectories.AddRange(Directory.GetDirectories(WorkshopPath));
+                        System.Diagnostics.Debug.WriteLine($"掃描工作坊模組: {WorkshopPath}");
+                    }
+                }
+
+                int total = allDirectories.Count;
                 int processed = 0;
                 
                 var modInfos = new List<ModInfo>();
                 
                 await Task.Run(() =>
                 {
-                    foreach (var dir in directories)
+                    foreach (var dir in allDirectories)
                     {
                         var modInfo = LoadModInfo(dir);
                         if (modInfo != null)
@@ -539,6 +731,17 @@ namespace RimWorldTranslationTool
                 ModsDataGrid.ItemsSource = _mods;
                 StatusTextBlock.Text = $"找到 {_mods.Count} 個模組";
                 ProgressTextBlock.Text = "掃描完成！";
+                
+                // 掃描完成後，自動載入 ModsConfig.xml（如果已設定）
+                if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("模組掃描完成，開始載入 ModsConfig.xml...");
+                    LoadModsConfig();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("模組掃描完成，但未設定 ModsConfig.xml 路徑");
+                }
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -560,7 +763,6 @@ namespace RimWorldTranslationTool
                 // 隱藏進度條
                 ProgressPanel.Visibility = Visibility.Collapsed;
                 ScanButton.IsEnabled = true;
-                BrowseButton.IsEnabled = true;
             }
         }
 
@@ -578,12 +780,22 @@ namespace RimWorldTranslationTool
                 if (meta == null)
                     return null;
 
+                var folderName = Path.GetFileName(modPath);
+                var packageId = GetXmlElementValue(meta, "packageId");
+                var name = GetXmlElementValue(meta, "name");
+
+                // 調試：輸出每個模組的基本信息
+                System.Diagnostics.Debug.WriteLine($"掃描到模組: {name}");
+                System.Diagnostics.Debug.WriteLine($"  FolderName: '{folderName}'");
+                System.Diagnostics.Debug.WriteLine($"  PackageId: '{packageId}'");
+                System.Diagnostics.Debug.WriteLine($"  路徑: {modPath}");
+
                 var modInfo = new ModInfo
                 {
-                    FolderName = Path.GetFileName(modPath),
-                    Name = GetXmlElementValue(meta, "name"),
+                    FolderName = folderName,
+                    Name = name,
                     Author = GetXmlElementValue(meta, "author"),
-                    PackageId = GetXmlElementValue(meta, "packageId"),
+                    PackageId = packageId,
                     SupportedVersions = GetVersionsString(meta.Element("supportedVersions")),
                     HasChineseTraditional = CheckChineseTraditionalTranslation(modPath),
                     HasChineseSimplified = CheckChineseSimplifiedTranslation(modPath),
@@ -614,9 +826,9 @@ namespace RimWorldTranslationTool
 
                 return modInfo;
             }
-            catch
+            catch (Exception ex)
             {
-                // 忽略無法載入的模組
+                System.Diagnostics.Debug.WriteLine($"載入模組信息失敗 {modPath}: {ex.Message}");
                 return null;
             }
         }
@@ -880,7 +1092,7 @@ namespace RimWorldTranslationTool
                 }
                 else
                 {
-                    MessageBox.Show("模組目錄不存在", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ShowErrorWithCopy("目錄錯誤", "模組目錄不存在", "請檢查設定的路徑是否正確");
                 }
             }
             catch (Exception ex)
@@ -896,18 +1108,28 @@ namespace RimWorldTranslationTool
                 Title = "選擇 ModsConfig.xml 檔案",
                 Filter = "XML 檔案|*.xml|所有檔案|*.*",
                 CheckFileExists = true,
-                Multiselect = false,
                 InitialDirectory = !string.IsNullOrEmpty(_modsConfigPath) ? 
                     Path.GetDirectoryName(_modsConfigPath) : 
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
             };
-
+            
             if (dialog.ShowDialog() == true)
             {
                 _modsConfigPath = dialog.FileName;
                 ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
                 SaveSettings(); // 自動儲存設定
-                LoadModsConfig();
+                
+                // 檢查是否有模組，如果有才立即載入
+                if (_mods.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("已選擇 ModsConfig.xml 且有模組，立即載入...");
+                    LoadModsConfig();
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("已選擇 ModsConfig.xml 但尚無模組，等待掃描完成後載入");
+                    ShowInfoMessage("提示", "ModsConfig.xml 已選擇，將在模組掃描完成後自動載入");
+                }
             }
         }
         
@@ -946,18 +1168,41 @@ namespace RimWorldTranslationTool
                 System.Diagnostics.Debug.WriteLine($"啟用模組數量: {activeMods.Count}");
                 System.Diagnostics.Debug.WriteLine($"程式模組數量: {_mods.Count}");
                 
+                // 詳細調試：輸出前10個啟用的模組ID
+                System.Diagnostics.Debug.WriteLine("=== 前10個啟用的模組ID ===");
+                foreach (var modId in activeMods.Take(10))
+                {
+                    System.Diagnostics.Debug.WriteLine($"  啟用ID: '{modId}'");
+                }
+                
+                // 詳細調試：輸出前10個程式模組的PackageId和FolderName
+                System.Diagnostics.Debug.WriteLine("=== 前10個程式模組 ===");
+                foreach (var mod in _mods.Take(10))
+                {
+                    System.Diagnostics.Debug.WriteLine($"  程式模組: {mod.Name}");
+                    System.Diagnostics.Debug.WriteLine($"    PackageId: '{mod.PackageId}'");
+                    System.Diagnostics.Debug.WriteLine($"    FolderName: '{mod.FolderName}'");
+                }
+                
                 // 標記已啟用的模組
                 int matchedCount = 0;
                 foreach (var mod in _mods)
                 {
                     bool wasEnabled = mod.IsEnabled;
-                    mod.IsEnabled = activeMods.Contains(mod.PackageId) || 
-                                 activeMods.Contains(mod.FolderName);
+                    
+                    // 更嚴格的匹配邏輯
+                    bool packageIdMatch = !string.IsNullOrEmpty(mod.PackageId) && 
+                                        activeMods.Contains(mod.PackageId);
+                    bool folderNameMatch = !string.IsNullOrEmpty(mod.FolderName) && 
+                                         activeMods.Contains(mod.FolderName);
+                    
+                    mod.IsEnabled = packageIdMatch || folderNameMatch;
                         
                     if (mod.IsEnabled)
                     {
                         matchedCount++;
                         System.Diagnostics.Debug.WriteLine($"✅ 啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        System.Diagnostics.Debug.WriteLine($"    匹配方式: {(packageIdMatch ? "PackageId" : "FolderName")}");
                     }
                     else
                     {
@@ -992,11 +1237,19 @@ namespace RimWorldTranslationTool
                     var missingCount = activeMods.Count - matchedCount;
                     System.Diagnostics.Debug.WriteLine($"顯示部分匹配訊息，缺少 {missingCount} 個模組");
                     
+                    // 找出未匹配的模組ID
+                    var unmatchedIds = activeMods.Where(id => 
+                        !_mods.Any(mod => 
+                            (!string.IsNullOrEmpty(mod.PackageId) && mod.PackageId == id) ||
+                            (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName == id))).Take(20);
+                    
                     var details = $"啟用模組數量: {activeMods.Count}\n" +
                                  $"匹配到的模組: {matchedCount}\n" +
                                  $"缺少的模組: {missingCount}\n\n" +
                                  $"程式模組數量: {_mods.Count}\n" +
-                                 $"ModsConfig 路徑: {_modsConfigPath}";
+                                 $"ModsConfig 路徑: {_modsConfigPath}\n\n" +
+                                 $"未匹配的模組ID（前20個）:\n" +
+                                 string.Join("\n", unmatchedIds);
                     
                     ShowErrorWithCopy("部分模組未匹配", 
                         $"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
@@ -1004,7 +1257,8 @@ namespace RimWorldTranslationTool
                         $"• 模組目錄路徑不對\n" +
                         $"• 模組的 PackageId 讀取失敗\n" +
                         $"• 模組資料夾名稱不匹配\n\n" +
-                        $"請檢查模組目錄設置是否正確。", details);
+                        $"請檢查模組目錄設置是否正確。\n\n" +
+                        $"詳細資訊中包含未匹配的模組ID，請檢查是否對應正確的模組。", details);
                 }
                 else
                 {
@@ -1336,6 +1590,99 @@ namespace RimWorldTranslationTool
             errorWindow.ShowDialog();
         }
         
+        private MessageBoxResult ShowConfirmDialog(string title, string message, string yesButtonText = "確定", string noButtonText = "取消")
+        {
+            var confirmWindow = new Window
+            {
+                Title = title,
+                Width = 400,
+                Height = 200,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                Background = new SolidColorBrush(Color.FromRgb(248, 250, 252))
+            };
+            
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            
+            // 內容區域
+            var stackPanel = new StackPanel
+            {
+                Margin = new Thickness(20),
+                VerticalAlignment = VerticalAlignment.Center
+            };
+            
+            var messageBlock = new TextBlock
+            {
+                Text = message,
+                FontSize = 14,
+                Foreground = new SolidColorBrush(Color.FromRgb(31, 41, 55)),
+                TextWrapping = TextWrapping.Wrap,
+                TextAlignment = TextAlignment.Center
+            };
+            stackPanel.Children.Add(messageBlock);
+            
+            grid.Children.Add(stackPanel);
+            
+            // 按鈕區域
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Margin = new Thickness(20, 10, 20, 20)
+            };
+            
+            var yesButton = new Button
+            {
+                Content = yesButtonText,
+                Background = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(20, 8, 20, 8),
+                Margin = new Thickness(0, 0, 10, 0),
+                FontSize = 12,
+                Cursor = Cursors.Hand
+            };
+            
+            var noButton = new Button
+            {
+                Content = noButtonText,
+                Background = new SolidColorBrush(Color.FromRgb(107, 114, 128)),
+                Foreground = new SolidColorBrush(Colors.White),
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(20, 8, 20, 8),
+                FontSize = 12,
+                Cursor = Cursors.Hand
+            };
+            
+            var result = MessageBoxResult.No;
+            
+            yesButton.Click += (s, e) => 
+            {
+                result = MessageBoxResult.Yes;
+                confirmWindow.Close();
+            };
+            
+            noButton.Click += (s, e) => 
+            {
+                result = MessageBoxResult.No;
+                confirmWindow.Close();
+            };
+            
+            buttonPanel.Children.Add(yesButton);
+            buttonPanel.Children.Add(noButton);
+            
+            Grid.SetRow(buttonPanel, 1);
+            grid.Children.Add(buttonPanel);
+            
+            confirmWindow.Content = grid;
+            confirmWindow.Owner = this;
+            confirmWindow.ShowDialog();
+            
+            return result;
+        }
+        
         // 模組管理事件處理器
         private void MoveToEnabled_Click(object sender, RoutedEventArgs e)
         {
@@ -1389,16 +1736,15 @@ namespace RimWorldTranslationTool
             {
                 if (string.IsNullOrEmpty(_modsConfigPath))
                 {
-                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ShowErrorWithCopy("檔案未選擇", "請先選擇 ModsConfig.xml 檔案", "請在設定頁籤中選擇 ModsConfig.xml 檔案");
                     return;
                 }
                 
                 // 二次確認
-                var result = MessageBox.Show(
-                    $"確定要儲存模組配置嗎？\n\n將更新 {_enabledMods.Count} 個已啟用模組的載入順序。\n\n檔案位置：{_modsConfigPath}",
+                var result = ShowConfirmDialog(
                     "確認儲存",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Question);
+                    $"確定要儲存模組配置嗎？\n\n將更新 {_enabledMods.Count} 個已啟用模組的載入順序。\n\n檔案位置：{_modsConfigPath}",
+                    "儲存", "取消");
                 
                 if (result != MessageBoxResult.Yes)
                     return;
@@ -1455,21 +1801,20 @@ namespace RimWorldTranslationTool
             // 最簡單的測試
             try
             {
-                var result = MessageBox.Show(
-                    "診斷按鈕測試！\n\n你看到了這個訊息嗎？", 
-                    "按鈕測試", 
-                    MessageBoxButton.YesNo, 
-                    MessageBoxImage.Question);
+                var result = ShowConfirmDialog(
+                    "診斷按鈕測試", 
+                    "診斷按鈕測試！\n\n你看到了這個訊息嗎？",
+                    "看到了", "沒看到");
                 
                 System.Diagnostics.Debug.WriteLine($"用戶選擇了: {result}");
                 
                 if (result == MessageBoxResult.Yes)
                 {
-                    ShowInfoMessage("成功", "太好了！按鈕和 MessageBox 都正常工作！");
+                    ShowInfoMessage("成功", "太好了！按鈕和自定義視窗都正常工作！");
                 }
                 else
                 {
-                    ShowInfoMessage("確認", "看起來按鈕和 MessageBox 都能正常顯示");
+                    ShowInfoMessage("確認", "看起來按鈕和自定義視窗都能正常顯示");
                 }
             }
             catch (Exception ex)
@@ -1528,9 +1873,18 @@ namespace RimWorldTranslationTool
 
     public class AppSettings
     {
-        public string ModsDirectory { get; set; } = "";
+        public string WorkshopPath { get; set; } = "";
+        public string GamePath { get; set; } = "";
+        public string ConfigPath { get; set; } = "";
         public string ModsConfigPath { get; set; } = "";
         public string GameVersion { get; set; } = "1.6";
+        
+        // 保持向後相容性
+        public string ModsDirectory 
+        { 
+            get => GamePath; 
+            set => GamePath = value; 
+        }
     }
 
     public class ModInfo

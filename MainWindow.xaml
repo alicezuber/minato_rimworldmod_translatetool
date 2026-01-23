@@ -30,11 +30,7 @@
                 
                 <!-- 快速操作區 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="遊戲版本:" VerticalAlignment="Center" Margin="0,0,8,0" 
-                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                    <ComboBox x:Name="GameVersionComboBox" Width="80" Height="32" 
-                              Style="{StaticResource ModernComboBoxStyle}"
-                              SelectionChanged="GameVersionComboBox_SelectionChanged"/>
+                    <TextBlock Text="🎮" FontSize="24" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -47,69 +43,90 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,16,0,0">
                     <StackPanel MaxWidth="800" HorizontalAlignment="Left">
                         
-                        <!-- 模組目錄設定卡片 -->
+                        <!-- RimWorld 路徑設定卡片 -->
                         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                             <StackPanel>
-                                <TextBlock Text="模組目錄" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
-                                <TextBlock Text="選擇 RimWorld 的模組資料夾路徑" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBlock Text="🎮 RimWorld 路徑設定" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="設定 RimWorld 遊戲目錄，工具將自動檢測其他路徑" Style="{StaticResource LabelTextStyle}"/>
+                                
+                                <!-- 遊戲路徑 -->
+                                <Border Background="#F8FAFC" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="🎯 RimWorld 遊戲目錄" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                        <TextBlock Text="RimWorld 遊戲安裝目錄 (steamapps\common\RimWorld)" Style="{StaticResource LabelTextStyle}" Margin="0,0,0,8"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="GamePathTextBox" Grid.Column="0"
+                                                     Style="{StaticResource ModernTextBoxStyle}"
+                                                     Text="{Binding GamePath, UpdateSourceTrigger=PropertyChanged}"
+                                                     TextChanged="GamePathTextBox_TextChanged"/>
+                                            <Button x:Name="BrowseGameButton" Grid.Column="1" Content="瀏覽..." 
+                                                    Style="{StaticResource SecondaryButtonStyle}"
+                                                    Margin="8,0,0,0" Click="BrowseGameButton_Click"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- 自動檢測的路徑顯示 -->
+                                <Border Background="#F0F9FF" CornerRadius="8" Padding="16" Margin="0,12,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="🤖 自動檢測的路徑" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                                        <TextBlock Text="📦 工作坊路徑：" Style="{StaticResource LabelTextStyle}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding WorkshopPath}" FontSize="12" Foreground="#64748B" Margin="0,0,0,8"/>
+                                        <TextBlock Text="⚙️ 設定路徑：" Style="{StaticResource LabelTextStyle}" Margin="0,0,0,4"/>
+                                        <TextBlock Text="{Binding ConfigPath}" FontSize="12" Foreground="#64748B"/>
+                                    </StackPanel>
+                                </Border>
+                                
+                                <!-- 自動檢測按鈕 -->
+                                <Button Content="🔍 自動檢測 RimWorld 路徑" 
+                                       Style="{StaticResource PrimaryButtonStyle}"
+                                       Margin="0,16,0,0" 
+                                       Click="AutoDetectPaths_Click"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- ModsConfig.xml 設定卡片 -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="📋 ModsConfig.xml 設定" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="選擇或確認 ModsConfig.xml 檔案位置" Style="{StaticResource LabelTextStyle}"/>
                                 
                                 <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     
-                                    <TextBox x:Name="FolderPathTextBox" Grid.Column="0"
-                                             Style="{StaticResource ModernTextBoxStyle}"
-                                             Text="{Binding FolderPath, UpdateSourceTrigger=PropertyChanged}"
-                                             TextChanged="FolderPathTextBox_TextChanged"/>
-                                    <Button x:Name="BrowseButton" Grid.Column="1" Content="瀏覽..." 
+                                    <TextBlock x:Name="ModsConfigPathText" Grid.Column="0" 
+                                               Text="未選擇檔案" VerticalAlignment="Center"
+                                               Style="{StaticResource LabelTextStyle}"/>
+                                    <TextBlock x:Name="ModsConfigStatusText" Grid.Column="1" 
+                                               Text="" VerticalAlignment="Center" Margin="8,0"
+                                               Style="{StaticResource LabelTextStyle}"/>
+                                    <Button x:Name="SelectModsConfigButton" Grid.Column="2" Content="選擇檔案..." 
                                             Style="{StaticResource SecondaryButtonStyle}"
-                                            Margin="8,0,0,0" Click="BrowseButton_Click"/>
+                                            Margin="8,0,0,0" Click="SelectModsConfigButton_Click"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
                         
-                        <!-- ModsConfig 設定卡片 -->
-                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                        <!-- 遊戲版本設定 -->
+                        <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="ModsConfig.xml" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
-                                <TextBlock Text="選擇遊戲的 ModsConfig.xml 檔案以按啟用順序排序模組" Style="{StaticResource LabelTextStyle}"/>
+                                <TextBlock Text="🎮 遊戲版本" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
+                                <TextBlock Text="選擇當前使用的 RimWorld 版本" Style="{StaticResource LabelTextStyle}"/>
                                 
                                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                    <Button x:Name="SelectModsConfigButton" Content="選擇檔案" 
-                                            Style="{StaticResource SecondaryButtonStyle}"
-                                            Click="SelectModsConfigButton_Click"/>
-                                    <Border Background="#F1F5F9" CornerRadius="6" Padding="12,8" Margin="12,0,0,0"
-                                            VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock x:Name="ModsConfigPathText" Text="未選擇" 
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBlock x:Name="ModsConfigStatusText" Text="" Margin="8,0,0,0" 
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-                        
-                        <!-- 掃描操作卡片 -->
-                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock Text="掃描模組" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,12"/>
-                                <TextBlock Text="掃描模組目錄以載入所有模組資訊" Style="{StaticResource LabelTextStyle}"/>
-                                
-                                <Button x:Name="ScanButton" Content="🔍 開始掃描" 
-                                        Style="{StaticResource PrimaryButtonStyle}"
-                                        HorizontalAlignment="Left" Margin="0,12,0,0"
-                                        Click="ScanButton_Click"/>
-                                
-                                <!-- 進度條 -->
-                                <StackPanel x:Name="ProgressPanel" Visibility="Collapsed" Margin="0,16,0,0">
-                                    <ProgressBar x:Name="ScanProgressBar" Height="8" Minimum="0" Maximum="100" Value="0"
-                                                 Style="{StaticResource ModernProgressBarStyle}"/>
-                                    <TextBlock x:Name="ProgressTextBlock" Text="準備掃描..." 
-                                               Style="{StaticResource LabelTextStyle}" Margin="0,8,0,0"/>
+                                    <TextBlock Text="目前版本:" VerticalAlignment="Center" Margin="0,0,12,0" 
+                                               Style="{StaticResource LabelTextStyle}"/>
+                                    <ComboBox x:Name="GameVersionComboBox" Width="120" Height="32" 
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              SelectionChanged="GameVersionComboBox_SelectionChanged"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>
@@ -121,14 +138,52 @@
             <!-- 模組瀏覽頁籤 -->
             <TabItem Header="📦 模組瀏覽">
                 <Grid Margin="0,16,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2.5*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*" MinWidth="320"/>
                     </Grid.ColumnDefinitions>
                     
+                    <!-- 掃描控制區 -->
+                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- 掃描按鈕和狀態 -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <Button x:Name="ScanButton" Content="🔍 掃描模組" 
+                                       Style="{StaticResource PrimaryButtonStyle}"
+                                       Click="ScanButton_Click"/>
+                                <TextBlock x:Name="StatusTextBlock" Text="準備掃描模組..." 
+                                           VerticalAlignment="Center" Margin="12,0,0,0"
+                                           Style="{StaticResource LabelTextStyle}"/>
+                            </StackPanel>
+                            
+                            <!-- 進度條 -->
+                            <StackPanel x:Name="ProgressPanel" Grid.Row="1" Margin="0,12,0,0"
+                                        Visibility="Collapsed">
+                                <ProgressBar x:Name="ScanProgressBar" Height="8" 
+                                             Background="#E5E7EB" Foreground="#3B82F6"/>
+                                <TextBlock x:Name="ProgressTextBlock" Text="準備掃描..." 
+                                           Margin="0,8,0,0" HorizontalAlignment="Center"
+                                           Style="{StaticResource LabelTextStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
                     <!-- 模組列表 -->
-                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="0">
+                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="0">
                         <DataGrid x:Name="ModsDataGrid" AutoGenerateColumns="False" 
                                   SelectionMode="Single" IsReadOnly="True"
                                   GridLinesVisibility="Horizontal" HeadersVisibility="Column"
@@ -242,7 +297,7 @@
                                   HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
                     
                     <!-- 預覽面板 -->
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}">
+                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource CardStyle}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel x:Name="PreviewPanel">
                                 <TextBlock Text="模組詳情" Style="{StaticResource SubHeaderTextStyle}" Margin="0,0,0,16"/>
@@ -415,8 +470,6 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 
-                <TextBlock x:Name="StatusTextBlock" Text="準備就緒" 
-                           VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
                 <TextBlock Grid.Column="1" Text="RimWorld Translation Tool v1.0" 
                            VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
             </Grid>
