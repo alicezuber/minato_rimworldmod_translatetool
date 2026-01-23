@@ -1,6 +1,5 @@
 using System;
 using System.Windows;
-using WPFLocalizeExtension.Engine;
 
 namespace RimWorldTranslationTool
 {
@@ -10,9 +9,8 @@ namespace RimWorldTranslationTool
         {
             base.OnStartup(e);
             
-            // 初始化 WPFLocalizeExtension - 確保與系統文化同步
-            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-            WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = currentCulture;
+            // 初始化本地化服務 - 預設繁體中文
+            LocalizationService.Instance.SetLanguage("zh-TW");
             
             // 設定全局異常處理
             this.DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -20,7 +18,7 @@ namespace RimWorldTranslationTool
 
         private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show(string.Format(LocalizationManager.GetString("UnhandledException_Message"), e.Exception.Message), 
+            MessageBox.Show(LocalizationManager.GetString("UnhandledException_Message", e.Exception.Message), 
                           LocalizationManager.GetString("Error_Title"), MessageBoxButton.OK, MessageBoxImage.Error);
             e.Handled = true;
         }

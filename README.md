@@ -350,6 +350,118 @@ RimWorldTranslationTool/
 - ⚠️ 需包含版權聲明和授權條款
 - ⚠️ 軟體按"原樣"提供，不提供任何擔保
 
+## 🌐 添加翻譯指南
+
+### 📝 如何添加新語言支援
+
+本工具採用原生 .NET ResourceManager 實現國際化，添加新語言非常簡單：
+
+#### 1. 準備翻譯檔案
+在 `Resources/` 目錄下創建對應語言的 `.resx` 檔案：
+```
+Resources/
+├── Resources.resx           # 預設（通常是英文）
+├── Resources.zh-TW.resx     # 繁體中文
+├── Resources.en-US.resx     # 英文
+└── Resources.[語言代碼].resx # 新語言檔案
+```
+
+#### 2. 語言代碼格式
+使用標準的 [RFC 4646](https://tools.ietf.org/html/rfc4646) 語言代碼：
+- `zh-TW` - 繁體中文 (台灣)
+- `zh-CN` - 簡體中文 (中國)
+- `ja-JP` - 日文 (日本)
+- `ko-KR` - 韓文 (韓國)
+- `fr-FR` - 法文 (法國)
+- `de-DE` - 德文 (德國)
+- `es-ES` - 西班牙文 (西班牙)
+- `ru-RU` - 俄文 (俄羅斯)
+
+#### 3. 翻譯檔案結構
+每個 `.resx` 檔案包含相同的 key，但值為對應語言的文字：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 視窗標題 -->
+  <data name="WindowTitle" xml:space="preserve">
+    <value>RimWorld 翻譯工具</value>
+  </data>
+  
+  <!-- 按鈕文字 -->
+  <data name="Browse" xml:space="preserve">
+    <value>瀏覽...</value>
+  </data>
+  
+  <!-- 狀態訊息 -->
+  <data name="ReadyToScan" xml:space="preserve">
+    <value>準備掃描模組...</value>
+  </data>
+</root>
+```
+
+#### 4. 添加語言選項
+在 `MainWindow.xaml.cs` 的 `InitializeLanguages()` 方法中添加新語言：
+
+```csharp
+private void InitializeLanguages()
+{
+    var languages = new[]
+    {
+        new { Code = "zh-TW", Name = "繁體中文" },
+        new { Code = "en-US", Name = "English" },
+        new { Code = "ja-JP", Name = "日本語" },  // 新增
+        new { Code = "ko-KR", Name = "한국어" }    // 新增
+    };
+    
+    // ... 其餘程式碼保持不變
+}
+```
+
+#### 5. 翻譯注意事項
+
+**✅ 最佳實踐**
+- 保持所有語言檔案的 key 數量一致
+- 使用語境適當的翻譯，避免直譯
+- 測試 UI 佈局，確保文字不會溢出
+- 保持專業術語的一致性
+
+**⚠️ 常見問題**
+- **特殊字符**：確保 XML 檔案使用 UTF-8 編碼
+- **佔位符**：保留 `{0}`、`{1}` 等格式化佔位符
+- **快捷鍵**：如果包含 `&` 字符，確保不會與現有快捷鍵衝突
+- **長度限制**：按鈕和標籤文字不宜過長
+
+#### 6. 編譯與測試
+1. 編譯專案：`dotnet build`
+2. 執行程式測試語言切換
+3. 檢查所有 UI 元素是否正確顯示翻譯文字
+4. 驗證語言切換功能正常工作
+
+#### 7. 提交翻譯
+完成翻譯後，您可以：
+- 建立 Pull Request 貢獻翻譯
+- 在 Issues 中分享翻譯檔案
+- 聯繫開發團隊整合翻譯
+
+### 🎨 翻譯風格指南
+
+#### 語氣風格
+- **專業友善**：保持專業性，同時易於理解
+- **一致性**：同一概念使用相同術語
+- **簡潔明瞭**：避免冗長的表達
+
+#### 術語對照
+| 中文 | 英文 | 說明 |
+|------|------|------|
+| 模組 | Mod | RimWorld 模組的統一術語 |
+| 掃描 | Scan | 檢測和分析模組 |
+| 啟用 | Enable | 啟動模組功能 |
+| 瀏覽 | Browse | 選擇檔案或目錄 |
+| 設定 | Settings | 程式配置選項 |
+
+---
+
 ## 🙏 致謝與鳴謝
 
 ### 🎮 RimWorld 社群

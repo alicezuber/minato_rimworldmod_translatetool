@@ -1,47 +1,42 @@
-using System.Resources;
-using System.Reflection;
 using System.Globalization;
 
 namespace RimWorldTranslationTool
 {
+    /// <summary>
+    /// 靜態本地化輔助類別 - 用於 C# 程式碼中取得本地化字串
+    /// </summary>
     public static class LocalizationManager
     {
-        private static readonly ResourceManager _resourceManager = 
-            new ResourceManager("RimWorldTranslationTool.Resources.Resources", typeof(LocalizationManager).Assembly);
-
+        /// <summary>
+        /// 取得本地化字串
+        /// </summary>
         public static string GetString(string key)
         {
-            try
-            {
-                var value = _resourceManager.GetString(key, CultureInfo.CurrentCulture);
-                return value ?? $"[{key}]";
-            }
-            catch
-            {
-                return $"[{key}]";
-            }
+            return LocalizationService.Instance.GetString(key);
         }
 
-        public static string GetString(string key, CultureInfo culture)
+        /// <summary>
+        /// 取得格式化的本地化字串
+        /// </summary>
+        public static string GetString(string key, params object[] args)
         {
-            try
-            {
-                var value = _resourceManager.GetString(key, culture);
-                return value ?? $"[{key}]";
-            }
-            catch
-            {
-                return $"[{key}]";
-            }
+            return LocalizationService.Instance.GetString(key, args);
         }
 
+        /// <summary>
+        /// 設定當前語言文化
+        /// </summary>
         public static void SetCulture(CultureInfo culture)
         {
-            CultureInfo.CurrentCulture = culture;
-            CultureInfo.CurrentUICulture = culture;
-            
-            // 通知 WPFLocalizeExtension 更新文化
-            WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = culture;
+            LocalizationService.Instance.CurrentCulture = culture;
+        }
+        
+        /// <summary>
+        /// 設定當前語言
+        /// </summary>
+        public static void SetLanguage(string cultureName)
+        {
+            LocalizationService.Instance.SetLanguage(cultureName);
         }
     }
 }

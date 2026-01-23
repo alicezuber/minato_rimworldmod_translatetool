@@ -66,9 +66,6 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
-            // 確保 WPFLocalizeExtension 文化設定正確
-            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-            WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = currentCulture;
             
             // 測試 i18n 功能
             TestI18n();
@@ -79,6 +76,9 @@ namespace RimWorldTranslationTool
             // 初始化版本選項
             InitializeGameVersions();
             
+            // 初始化語言選項
+            InitializeLanguages();
+            
             // 設置選擇變更事件
             ModsDataGrid.SelectionChanged += ModsDataGrid_SelectionChanged;
             
@@ -88,34 +88,29 @@ namespace RimWorldTranslationTool
         
         private void TestI18n()
         {
-            Logger.Log("=== i18n 測試開始 ===");
+            Logger.Log("=== i18n 測試開始 (原生 .NET 實現) ===");
             
             try
             {
-                // 1. 測試 C# 資源管理器
-                Logger.Log("1. 測試 C# 資源管理器");
+                // 1. 測試 LocalizationService
+                Logger.Log("1. 測試 LocalizationService");
                 
                 // 測試中文
-                LocalizationManager.SetCulture(new System.Globalization.CultureInfo("zh-TW"));
-                var zhTitle = LocalizationManager.GetString("WindowTitle");
-                var zhSettings = LocalizationManager.GetString("TabSettings");
+                LocalizationService.Instance.SetLanguage("zh-TW");
+                var zhTitle = LocalizationService.Instance.WindowTitle;
+                var zhSettings = LocalizationService.Instance.TabSettings;
                 Logger.Log($"   zh-TW WindowTitle: '{zhTitle}'");
                 Logger.Log($"   zh-TW TabSettings: '{zhSettings}'");
                 
                 // 測試英文
-                LocalizationManager.SetCulture(new System.Globalization.CultureInfo("en-US"));
-                var enTitle = LocalizationManager.GetString("WindowTitle");
-                var enSettings = LocalizationManager.GetString("TabSettings");
+                LocalizationService.Instance.SetLanguage("en-US");
+                var enTitle = LocalizationService.Instance.WindowTitle;
+                var enSettings = LocalizationService.Instance.TabSettings;
                 Logger.Log($"   en-US WindowTitle: '{enTitle}'");
                 Logger.Log($"   en-US TabSettings: '{enSettings}'");
                 
-                // 2. 測試 WPFLocalizeExtension
-                Logger.Log("2. 測試 WPFLocalizeExtension");
-                var wpfCulture = WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture;
-                Logger.Log($"   WPFLocalizeExtension Culture: {wpfCulture.Name}");
-                
-                // 3. 檢查衛星組件
-                Logger.Log("3. 檢查衛星組件");
+                // 2. 檢查衛星組件
+                Logger.Log("2. 檢查衛星組件");
                 var assembly = System.Reflection.Assembly.GetExecutingAssembly();
                 var location = assembly.Location ?? throw new InvalidOperationException("無法取得程式位置");
                 Logger.Log($"   主程式位置: {location}");
@@ -128,22 +123,21 @@ namespace RimWorldTranslationTool
                 Logger.Log($"   en-US 衛星組件存在: {File.Exists(enUSAssemblyPath)}");
                 
                 // 恢復預設語言
-                LocalizationManager.SetCulture(System.Globalization.CultureInfo.CurrentCulture);
-                // 同時恢復 WPFLocalizeExtension 的文化設定
-                WPFLocalizeExtension.Engine.LocalizeDictionary.Instance.Culture = System.Globalization.CultureInfo.CurrentCulture;
+                LocalizationService.Instance.CurrentCulture = System.Globalization.CultureInfo.CurrentUICulture;
                 
-                // 4. 檢查 UI 綁定
-                Logger.Log("4. 檢查 UI 綁定");
-                Logger.Log($"   視窗標題實際顯示: {this.Title}");
-                Logger.Log($"   預期標題: {zhTitle}");
+                // 3. 檢查 UI 綁定
+                Logger.Log("3. 檢查 UI 綁定");
+                Logger.Log($"   當前語言: {LocalizationService.Instance.CurrentCulture.Name}");
+                Logger.Log($"   視窗標題: {LocalizationService.Instance.WindowTitle}");
                 
                 // 檢查是否載入成功
-                if (zhTitle.Contains("WindowTitle") || zhTitle.Contains("["))
+                var testTitle = LocalizationService.Instance.WindowTitle;
+                if (testTitle.Contains("WindowTitle") || testTitle.Contains("["))
                 {
                     Logger.LogWarning("資源檔案載入失敗 - 顯示的是 key 而不是值");
                     Logger.Log("   可能原因:");
                     Logger.Log("   1. 資源檔案沒有正確編譯成衛星組件");
-                    Logger.Log("   2. WPFLocalizeExtension 找不到資源");
+                    Logger.Log("   2. ResourceManager 找不到資源");
                     Logger.Log("   3. 資源檔案中的 key 不匹配");
                 }
                 else
@@ -198,6 +192,23 @@ namespace RimWorldTranslationTool
             GameVersionComboBox.SelectedItem = _selectedGameVersion;
         }
         
+        private void InitializeLanguages()
+        {
+            var languages = new[]
+            {
+                new { Code = "zh-TW", Name = "繁體中文" },
+                new { Code = "en-US", Name = "English" }
+            };
+            
+            LanguageComboBox.ItemsSource = languages;
+            LanguageComboBox.DisplayMemberPath = "Name";
+            LanguageComboBox.SelectedValuePath = "Code";
+            
+            // 設定當前選中的語言
+            var currentLanguage = LocalizationService.Instance.CurrentCulture.Name;
+            LanguageComboBox.SelectedItem = languages.FirstOrDefault(l => l.Code == currentLanguage);
+        }
+        
         private void LoadSettings()
         {
             _isLoadingSettings = true;  // 開始載入設定
@@ -219,11 +230,18 @@ namespace RimWorldTranslationTool
                     System.Diagnostics.Debug.WriteLine($"載入設定 - ConfigPath: {_settings.ConfigPath}");
                     System.Diagnostics.Debug.WriteLine($"載入設定 - ModsConfigPath: {_settings.ModsConfigPath}");
                     System.Diagnostics.Debug.WriteLine($"載入設定 - GameVersion: {_settings.GameVersion}");
+                    System.Diagnostics.Debug.WriteLine($"載入設定 - Language: {_settings.Language}");
                     
                     // 載入新設定
                     GamePath = _settings.GamePath;
                     _modsConfigPath = _settings.ModsConfigPath;
                     _selectedGameVersion = _settings.GameVersion;
+                    
+                    // 載入語言設定
+                    if (!string.IsNullOrEmpty(_settings.Language))
+                    {
+                        LocalizationService.Instance.SetLanguage(_settings.Language);
+                    }
                     
                     System.Diagnostics.Debug.WriteLine($"=== 載入設定完成 ===");
                 }
@@ -251,6 +269,7 @@ namespace RimWorldTranslationTool
                 _settings.GamePath = GamePath;
                 _settings.ModsConfigPath = _modsConfigPath;
                 _settings.GameVersion = _selectedGameVersion;
+                _settings.Language = LocalizationService.Instance.CurrentCulture.Name;
                 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFileName, json);
@@ -261,6 +280,7 @@ namespace RimWorldTranslationTool
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - ConfigPath: {_settings.ConfigPath}");
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - ModsConfigPath: {_settings.ModsConfigPath}");
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - GameVersion: {_settings.GameVersion}");
+                System.Diagnostics.Debug.WriteLine($"儲存設定 - Language: {_settings.Language}");
             }
             catch (Exception ex)
             {
@@ -337,6 +357,22 @@ namespace RimWorldTranslationTool
                 _selectedGameVersion = selectedVersion;
                 SaveSettings(); // 自動儲存設定
                 RefreshVersionCompatibility();
+            }
+        }
+        
+        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (LanguageComboBox.SelectedItem != null)
+            {
+                var selectedItem = LanguageComboBox.SelectedItem;
+                var codeProperty = selectedItem.GetType().GetProperty("Code");
+                var languageCode = codeProperty?.GetValue(selectedItem) as string;
+                
+                if (!string.IsNullOrEmpty(languageCode))
+                {
+                    LocalizationService.Instance.SetLanguage(languageCode);
+                    SaveSettings(); // 自動儲存設定
+                }
             }
         }
         
@@ -1983,6 +2019,7 @@ namespace RimWorldTranslationTool
         public string ConfigPath { get; set; } = "";
         public string ModsConfigPath { get; set; } = "";
         public string GameVersion { get; set; } = "1.6";
+        public string Language { get; set; } = "zh-TW";
         
         // 保持向後相容性
         public string ModsDirectory 
