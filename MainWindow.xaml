@@ -396,6 +396,8 @@
                                     Click="MoveToPool_Click" Margin="0,0,12,0"/>
                             <Button Content="🔄 重新整理" Style="{StaticResource SecondaryButtonStyle}" 
                                     Click="RefreshModLists_Click" Margin="0,0,12,0"/>
+                            <Button Content="🔍 診斷" Style="{StaticResource SecondaryButtonStyle}" 
+                                    Click="DiagnoseModsConfig_Click" Margin="0,0,12,0"/>
                             <Button Content="💾 儲存配置" Style="{StaticResource PrimaryButtonStyle}" 
                                     Click="SaveModsConfig_Click"/>
                         </StackPanel>

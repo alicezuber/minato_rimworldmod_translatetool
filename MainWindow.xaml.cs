@@ -11,9 +11,31 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using System.Text.Json;
+using System.Windows.Data;
 
 namespace RimWorldTranslationTool
 {
+    public class RelayCommand : ICommand
+    {
+        private readonly Action _execute;
+        private readonly Func<bool>? _canExecute;
+
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler? CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+
+        public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
+        public void Execute(object? parameter) => _execute();
+    }
+
     public partial class MainWindow : Window, System.ComponentModel.INotifyPropertyChanged
     {
         private List<ModInfo> _mods = new List<ModInfo>();
@@ -896,16 +918,66 @@ namespace RimWorldTranslationTool
                 
                 if (activeMods != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入開始 ===");
+                    System.Diagnostics.Debug.WriteLine($"啟用模組數量: {activeMods.Count}");
+                    System.Diagnostics.Debug.WriteLine($"程式模組數量: {_mods.Count}");
+                    
                     // 標記已啟用的模組
+                    int matchedCount = 0;
                     foreach (var mod in _mods)
                     {
+                        bool wasEnabled = mod.IsEnabled;
                         mod.IsEnabled = activeMods.Contains(mod.PackageId) || 
                                      activeMods.Contains(mod.FolderName);
+                        
+                        if (mod.IsEnabled)
+                        {
+                            matchedCount++;
+                            System.Diagnostics.Debug.WriteLine($"✅ 啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"❌ 未啟用: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                        }
                     }
+                    
+                    System.Diagnostics.Debug.WriteLine($"匹配到的啟用模組: {matchedCount}");
+                    System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入完成 ===");
                     
                     // 刷新顯示
                     ModsDataGrid.Items.Refresh();
-                    StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組";
+                    UpdateModManagementLists();
+                    
+                    // 強制更新所有相關UI
+                    if (ModPoolListBox != null)
+                    {
+                        ModPoolListBox.Items.Refresh();
+                    }
+                    if (EnabledModsListBox != null)
+                    {
+                        EnabledModsListBox.Items.Refresh();
+                    }
+                    
+                    StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組，{matchedCount} 個匹配";
+                    
+                    // 顯示匹配結果給用戶
+                    if (matchedCount < activeMods.Count)
+                    {
+                        var missingCount = activeMods.Count - matchedCount;
+                        MessageBox.Show($"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
+                                      $"這可能是因為：\n" +
+                                      $"• 模組目錄路徑不對\n" +
+                                      $"• 模組的 PackageId 讀取失敗\n" +
+                                      $"• 模組資料夾名稱不匹配\n\n" +
+                                      $"請檢查模組目錄設置是否正確。", 
+                                      "部分模組未匹配", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"ModsConfig.xml 載入成功！\n\n" +
+                                      $"✅ {activeMods.Count} 個啟用模組全部匹配", 
+                                      "載入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
             }
             catch (Exception ex)
@@ -1127,6 +1199,97 @@ namespace RimWorldTranslationTool
             catch (Exception ex)
             {
                 MessageBox.Show($"重新整理失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        
+        private void DiagnoseModsConfig_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_modsConfigPath) || !File.Exists(_modsConfigPath))
+                {
+                    MessageBox.Show("請先選擇 ModsConfig.xml 檔案", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                
+                var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
+                var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
+                    .Select(li => li.Value)
+                    .ToList();
+                
+                var report = new System.Text.StringBuilder();
+                report.AppendLine("=== ModsConfig.xml 診斷報告 ===");
+                report.AppendLine($"檔案路徑: {_modsConfigPath}");
+                report.AppendLine($"啟用模組數量: {activeMods.Count}");
+                report.AppendLine($"程式模組數量: {_mods.Count}");
+                report.AppendLine();
+                
+                report.AppendLine("前10個啟用的模組:");
+                foreach (var modId in activeMods.Take(10))
+                {
+                    var matchedMod = _mods.FirstOrDefault(m => 
+                        m.PackageId == modId || m.FolderName == modId);
+                    var status = matchedMod != null ? "✅ 匹配" : "❌ 未匹配";
+                    report.AppendLine($"  {modId} - {status}");
+                    if (matchedMod != null)
+                    {
+                        report.AppendLine($"    → {matchedMod.Name}");
+                    }
+                }
+                
+                report.AppendLine();
+                report.AppendLine("程式中的前10個模組:");
+                foreach (var mod in _mods.Take(10))
+                {
+                    var isActive = activeMods.Contains(mod.PackageId) || activeMods.Contains(mod.FolderName);
+                    var status = isActive ? "✅ 啟用" : "❌ 未啟用";
+                    report.AppendLine($"  {mod.Name} - {status}");
+                    report.AppendLine($"    PackageId: '{mod.PackageId}'");
+                    report.AppendLine($"    Folder: '{mod.FolderName}'");
+                }
+                
+                // 顯示報告
+                var reportWindow = new Window
+                {
+                    Title = "ModsConfig.xml 診斷報告",
+                    Width = 700,
+                    Height = 600,
+                    Content = new Grid
+                    {
+                        Children = 
+                        {
+                            new ScrollViewer
+                            {
+                                Content = new TextBlock
+                                {
+                                    Text = report.ToString(),
+                                    FontFamily = new FontFamily("Consolas"),
+                                    FontSize = 11,
+                                    Padding = new Thickness(10, 10, 10, 10),
+                                    TextWrapping = TextWrapping.NoWrap
+                                }
+                            },
+                            new Button
+                            {
+                                Content = "📋 複製報告",
+                                HorizontalAlignment = HorizontalAlignment.Right,
+                                VerticalAlignment = VerticalAlignment.Bottom,
+                                Margin = new Thickness(10),
+                                Padding = new Thickness(10, 5, 10, 5),
+                                Command = new RelayCommand(() => 
+                                {
+                                    Clipboard.SetText(report.ToString());
+                                    MessageBox.Show("報告已複製到剪貼簿！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                                })
+                            }
+                        }
+                    }
+                };
+                reportWindow.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"診斷失敗：{ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
