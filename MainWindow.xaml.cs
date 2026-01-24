@@ -243,6 +243,10 @@ namespace RimWorldTranslationTool
                         LocalizationService.Instance.SetLanguage(_settings.Language);
                     }
                     
+                    // 載入主題設定
+                    ThemeManager.Instance.LoadThemeFromSettings(_settings.Theme);
+                    UpdateThemeIcon();
+                    
                     System.Diagnostics.Debug.WriteLine($"=== 載入設定完成 ===");
                 }
                 else
@@ -270,6 +274,7 @@ namespace RimWorldTranslationTool
                 _settings.ModsConfigPath = _modsConfigPath;
                 _settings.GameVersion = _selectedGameVersion;
                 _settings.Language = LocalizationService.Instance.CurrentCulture.Name;
+                _settings.Theme = ThemeManager.Instance.GetThemeName();
                 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(SettingsFileName, json);
@@ -373,6 +378,21 @@ namespace RimWorldTranslationTool
                     LocalizationService.Instance.SetLanguage(languageCode);
                     SaveSettings(); // 自動儲存設定
                 }
+            }
+        }
+        
+        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+        {
+            ThemeManager.Instance.ToggleTheme();
+            UpdateThemeIcon();
+            SaveSettings(); // 自動儲存設定
+        }
+        
+        private void UpdateThemeIcon()
+        {
+            if (ThemeIcon != null)
+            {
+                ThemeIcon.Text = ThemeManager.Instance.IsDarkMode ? "☀️" : "🌙";
             }
         }
         
@@ -2223,6 +2243,7 @@ namespace RimWorldTranslationTool
         public string ModsConfigPath { get; set; } = "";
         public string GameVersion { get; set; } = "1.6";
         public string Language { get; set; } = "zh-TW";
+        public string Theme { get; set; } = "Light";
         
         // 保持向後相容性
         public string ModsDirectory 

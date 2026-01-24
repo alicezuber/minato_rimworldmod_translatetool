@@ -29,6 +29,15 @@
             <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
             <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}"/>
             
+            <!-- 主題相關額外資源 -->
+            <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="InputBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="HoverBackgroundBrush" Color="#F1F5F9"/>
+            <SolidColorBrush x:Key="RowBackgroundBrush" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="AlternateRowBackgroundBrush" Color="#FAFAFA"/>
+            <SolidColorBrush x:Key="SelectedRowBackgroundBrush" Color="#EFF6FF"/>
+            <SolidColorBrush x:Key="InfoBoxBackgroundBrush" Color="#F8FAFC"/>
+            
             <!-- 主要按鈕樣式 -->
             <Style x:Key="PrimaryButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>

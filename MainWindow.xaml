@@ -5,7 +5,7 @@
         Title="{Binding WindowTitle, Source={x:Static local:LocalizationService.Instance}}" 
         Height="750" Width="1300"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BackgroundBrush}">
+        Background="{DynamicResource BackgroundBrush}">
     
     <Grid>
         <Grid.RowDefinitions>
@@ -15,7 +15,7 @@
         </Grid.RowDefinitions>
         
         <!-- 頂部標題區 -->
-        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
             <Grid Margin="24,16">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -25,14 +25,23 @@
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="🎮" FontSize="28" VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding WindowTitle, Source={x:Static local:LocalizationService.Instance}}" Style="{StaticResource HeaderTextStyle}"/>
-                        <TextBlock Text="{Binding Subtitle, Source={x:Static local:LocalizationService.Instance}}" Style="{StaticResource LabelTextStyle}" Margin="0"/>
+                        <TextBlock Text="{Binding WindowTitle, Source={x:Static local:LocalizationService.Instance}}" Style="{DynamicResource HeaderTextStyle}"/>
+                        <TextBlock Text="{Binding Subtitle, Source={x:Static local:LocalizationService.Instance}}" Style="{DynamicResource LabelTextStyle}" Margin="0"/>
                     </StackPanel>
                 </StackPanel>
                 
                 <!-- 快速操作區 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="🎮" FontSize="24" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <!-- 主題切換按鈕 -->
+                    <Button x:Name="ThemeToggleButton" 
+                            Style="{StaticResource SecondaryButtonStyle}"
+                            Click="ThemeToggleButton_Click"
+                            ToolTip="切換深色/淺色模式"
+                            Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="ThemeIcon" Text="🌙" FontSize="16" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
@@ -495,7 +504,7 @@
         </TabControl>
         
         <!-- 底部狀態列 -->
-        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Background="{DynamicResource HeaderBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
             <Grid Margin="24,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -503,7 +512,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <TextBlock Grid.Column="1" Text="{Binding AppVersion, Source={x:Static local:LocalizationService.Instance}}" 
-                           VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
+                           VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"/>
             </Grid>
         </Border>
     </Grid>
