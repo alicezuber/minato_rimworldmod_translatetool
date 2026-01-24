@@ -66,12 +66,8 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
-            
             // 測試 i18n 功能
             TestI18n();
-            
-            // 載入設定
-            LoadSettings();
             
             // 初始化版本選項
             InitializeGameVersions();
@@ -154,8 +150,11 @@ namespace RimWorldTranslationTool
             Logger.Log($"日誌檔案位置: {Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "i18n_test.log")}");
         }
         
-        private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
+            // 載入設定
+            await LoadSettingsAsync();
+            
             // 一次性更新所有 UI 元素
             UpdateAllUI();
             
@@ -209,7 +208,7 @@ namespace RimWorldTranslationTool
             LanguageComboBox.SelectedItem = languages.FirstOrDefault(l => l.Code == currentLanguage);
         }
         
-        private void LoadSettings()
+        private async Task LoadSettingsAsync()
         {
             _isLoadingSettings = true;  // 開始載入設定
             
@@ -217,7 +216,7 @@ namespace RimWorldTranslationTool
             {
                 if (File.Exists(SettingsFileName))
                 {
-                    var json = File.ReadAllText(SettingsFileName);
+                    var json = await File.ReadAllTextAsync(SettingsFileName);
                     _settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
                     
                     // 調試信息
@@ -266,7 +265,7 @@ namespace RimWorldTranslationTool
             }
         }
         
-        private void SaveSettings()
+        private async Task SaveSettingsAsync()
         {
             try
             {
@@ -277,7 +276,7 @@ namespace RimWorldTranslationTool
                 _settings.Theme = ThemeManager.Instance.GetThemeName();
                 
                 var json = JsonSerializer.Serialize(_settings, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(SettingsFileName, json);
+                await File.WriteAllTextAsync(SettingsFileName, json);
                 
                 // 調試信息
                 System.Diagnostics.Debug.WriteLine($"儲存設定 - WorkshopPath: {_settings.WorkshopPath}");
@@ -291,6 +290,15 @@ namespace RimWorldTranslationTool
             {
                 ShowErrorWithCopy(LocalizationManager.GetString("SaveSettingsFailed_Title"), 
                                  LocalizationManager.GetString("SaveSettingsFailed_Message"), ex.ToString());
+            }
+        }
+
+        private async Task SaveSettingsIfNeededAsync()
+        {
+            // 只有在不是載入設定時才自動保存
+            if (!_isLoadingSettings)
+            {
+                await SaveSettingsAsync();
             }
         }
 
@@ -311,7 +319,7 @@ namespace RimWorldTranslationTool
                     // 只有在不是載入設定時才自動保存
                     if (!_isLoadingSettings)
                     {
-                        SaveSettings();
+                        _ = Task.Run(async () => await SaveSettingsAsync());
                     }
                 }
             }
@@ -333,7 +341,7 @@ namespace RimWorldTranslationTool
                     // 只有在不是載入設定時才自動保存
                     if (!_isLoadingSettings)
                     {
-                        SaveSettings();
+                        _ = Task.Run(async () => await SaveSettingsAsync());
                     }
                 }
             }
@@ -355,17 +363,17 @@ namespace RimWorldTranslationTool
 
         private bool _isLoadingSettings = false;
 
-        private void GameVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void GameVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (GameVersionComboBox.SelectedItem is string selectedVersion)
             {
                 _selectedGameVersion = selectedVersion;
-                SaveSettings(); // 自動儲存設定
+                _ = Task.Run(async () => await SaveSettingsAsync()); // 自動儲存設定
                 RefreshVersionCompatibility();
             }
         }
         
-        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (LanguageComboBox.SelectedItem != null)
             {
@@ -376,16 +384,16 @@ namespace RimWorldTranslationTool
                 if (!string.IsNullOrEmpty(languageCode))
                 {
                     LocalizationService.Instance.SetLanguage(languageCode);
-                    SaveSettings(); // 自動儲存設定
+                    _ = Task.Run(async () => await SaveSettingsAsync()); // 自動儲存設定
                 }
             }
         }
         
-        private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
+        private async void ThemeToggleButton_Click(object sender, RoutedEventArgs e)
         {
             ThemeManager.Instance.ToggleTheme();
             UpdateThemeIcon();
-            SaveSettings(); // 自動儲存設定
+            _ = Task.Run(async () => await SaveSettingsAsync()); // 自動儲存設定
         }
         
         private void UpdateThemeIcon()
@@ -506,8 +514,46 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"自動檢測路徑時發生錯誤: {ex.Message}");
+                Logger.LogError("自動檢測路徑時發生錯誤", ex);
                 return null;
+            }
+        }
+        
+        /// <summary>
+        /// 驗證路徑安全性，防止路徑遍歷攻擊
+        /// </summary>
+        private string ValidateModPath(string basePath, string folderName)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(basePath))
+                    throw new ArgumentException("Base path cannot be null or empty", nameof(basePath));
+                    
+                if (string.IsNullOrEmpty(folderName))
+                    throw new ArgumentException("Folder name cannot be null or empty", nameof(folderName));
+
+                // 檢查是否包含危險字符
+                var dangerousChars = new[] { "..", "/", "\\", ":", "*", "?", "\"", "<", ">", "|" };
+                if (dangerousChars.Any(char => folderName.Contains(char)))
+                {
+                    throw new SecurityException($"Folder name contains dangerous characters: {folderName}");
+                }
+
+                var fullPath = Path.GetFullPath(Path.Combine(basePath, folderName));
+                var fullBasePath = Path.GetFullPath(basePath);
+
+                // 確保結果路徑在基礎路徑內
+                if (!fullPath.StartsWith(fullBasePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new SecurityException($"Path traversal detected. Attempted to access: {fullPath} from base: {fullBasePath}");
+                }
+
+                return fullPath;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Path validation failed for base: '{basePath}', folder: '{folderName}'", ex);
+                throw; // 重新拋出異常，讓調用者處理
             }
         }
 
@@ -821,6 +867,149 @@ namespace RimWorldTranslationTool
             return hasValidModLocation;
         }
 
+        /// <summary>
+        /// 收集所有需要掃描的目錄
+        /// </summary>
+        private List<string> CollectModDirectories()
+        {
+            var allDirectories = new List<string>();
+            
+            // 1. 掃描本體模組 (Mods 資料夾)
+            AddModsDirectories(allDirectories);
+            
+            // 2. 掃描 Data 資料夾中的核心模組
+            AddDataDirectories(allDirectories);
+            
+            // 3. 掃描工作坊模組
+            AddWorkshopDirectories(allDirectories);
+            
+            return allDirectories;
+        }
+        
+        /// <summary>
+        /// 添加 Mods 資料夾中的模組目錄
+        /// </summary>
+        private void AddModsDirectories(List<string> directories)
+        {
+            if (!string.IsNullOrEmpty(GamePath))
+            {
+                var modsPath = Path.Combine(GamePath, "Mods");
+                if (Directory.Exists(modsPath))
+                {
+                    directories.AddRange(Directory.GetDirectories(modsPath));
+                    Logger.Log($"掃描本體模組: {modsPath}");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 添加 Data 資料夾中的核心模組目錄
+        /// </summary>
+        private void AddDataDirectories(List<string> directories)
+        {
+            if (string.IsNullOrEmpty(GamePath)) return;
+            
+            var dataPath = Path.Combine(GamePath, "Data");
+            Logger.Log($"=== 開始檢查 Data 資料夾 ===");
+            Logger.Log($"GamePath: {GamePath}");
+            Logger.Log($"檢查 Data 資料夾: {dataPath}");
+            
+            if (!Directory.Exists(dataPath))
+            {
+                Logger.LogWarning($"Data 資料夾不存在: {dataPath}");
+                return;
+            }
+            
+            var dataDirs = Directory.GetDirectories(dataPath);
+            Logger.Log($"找到 {dataDirs.Length} 個 Data 子資料夾");
+            
+            // 列出所有子資料夾
+            foreach (var dir in dataDirs)
+            {
+                var folderName = Path.GetFileName(dir);
+                Logger.Log($"  Data子資料夾: {folderName}");
+            }
+            
+            // 檢查核心模組
+            int coreModsAdded = 0;
+            foreach (var dir in dataDirs)
+            {
+                var folderName = Path.GetFileName(dir);
+                var aboutPath = Path.Combine(dir, "About", "About.xml");
+                var aboutExists = File.Exists(aboutPath);
+                
+                Logger.Log($"檢查核心模組: {folderName} - About\\About.xml存在: {aboutExists}");
+                if (aboutExists)
+                {
+                    directories.Add(dir);
+                    Logger.Log($"✅ 掃描核心模組: {dir}");
+                    coreModsAdded++;
+                }
+            }
+            
+            Logger.Log($"=== Data 資料夾掃描完成，新增 {coreModsAdded} 個核心模組 ===");
+        }
+        
+        /// <summary>
+        /// 添加工作坊模組目錄
+        /// </summary>
+        private void AddWorkshopDirectories(List<string> directories)
+        {
+            if (string.IsNullOrEmpty(WorkshopPath)) return;
+            
+            if (Directory.Exists(WorkshopPath))
+            {
+                directories.AddRange(Directory.GetDirectories(WorkshopPath));
+                Logger.Log($"掃描工作坊模組: {WorkshopPath}");
+            }
+        }
+        
+        /// <summary>
+        /// 處理模組目錄掃描進度
+        /// </summary>
+        private void UpdateScanProgress(int processed, int total)
+        {
+            double progress = (double)processed / total * 100;
+            
+            // 減少 Dispatcher.Invoke 調用頻率
+            if (processed % 5 == 0 || processed == total)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    ScanProgressBar.Value = progress;
+                    ProgressTextBlock.Text = $"掃描中... {processed}/{total}";
+                    StatusTextBlock.Text = $"正在掃描模組... {processed}/{total}";
+                });
+            }
+        }
+        
+        /// <summary>
+        /// 完成掃描後的處理
+        /// </summary>
+        private void CompleteScan(List<ModInfo> modInfos)
+        {
+            // 一次性更新所有模組
+            _mods.AddRange(modInfos);
+            
+            // 建立翻譯補丁對應關係
+            BuildTranslationMappings();
+            
+            ModsDataGrid.ItemsSource = _mods;
+            StatusTextBlock.Text = $"找到 {_mods.Count} 個模組";
+            ProgressTextBlock.Text = "掃描完成！";
+            
+            // 掃描完成後，自動載入 ModsConfig.xml（如果已設定）
+            if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
+            {
+                Logger.Log("模組掃描完成，開始載入 ModsConfig.xml...");
+                LoadModsConfig();
+            }
+            else
+            {
+                Logger.Log("模組掃描完成，但未設定 ModsConfig.xml 路徑");
+            }
+        }
+
         private async Task ScanModsAsync()
         {
             try
@@ -836,71 +1025,8 @@ namespace RimWorldTranslationTool
                 _mods.Clear();
                 ModsDataGrid.ItemsSource = null;
 
-                var allDirectories = new List<string>();
-                
-                // 1. 掃描本體模組 (Mods 資料夾)
-                if (!string.IsNullOrEmpty(GamePath))
-                {
-                    var modsPath = Path.Combine(GamePath, "Mods");
-                    if (Directory.Exists(modsPath))
-                    {
-                        allDirectories.AddRange(Directory.GetDirectories(modsPath));
-                        System.Diagnostics.Debug.WriteLine($"掃描本體模組: {modsPath}");
-                    }
-                    
-                    // 2. 掃描 Data 資料夾中的核心模組
-                    var dataPath = Path.Combine(GamePath, "Data");
-                    
-                    // 強制寫入日誌
-                    Logger.Log($"=== 開始檢查 Data 資料夾 ===");
-                    Logger.Log($"GamePath: {GamePath}");
-                    Logger.Log($"檢查 Data 資料夾: {dataPath}");
-                    
-                    if (Directory.Exists(dataPath))
-                    {
-                        var dataDirs = Directory.GetDirectories(dataPath);
-                        Logger.Log($"找到 {dataDirs.Length} 個 Data 子資料夾");
-                        
-                        // 列出所有子資料夾
-                        foreach (var dir in dataDirs)
-                        {
-                            var folderName = Path.GetFileName(dir);
-                            Logger.Log($"  Data子資料夾: {folderName}");
-                        }
-                        
-                        foreach (var dir in dataDirs)
-                        {
-                            var folderName = Path.GetFileName(dir);
-                            // 檢查是否有 About\About.xml (核心模組結構)
-                            var aboutPath = Path.Combine(dir, "About", "About.xml");
-                            var aboutExists = File.Exists(aboutPath);
-                            
-                            Logger.Log($"檢查核心模組: {folderName} - About\\About.xml存在: {aboutExists}");
-                            if (aboutExists)
-                            {
-                                allDirectories.Add(dir);
-                                Logger.Log($"✅ 掃描核心模組: {dir}");
-                            }
-                        }
-                        
-                        Logger.Log($"=== Data 資料夾掃描完成，新增 {allDirectories.Count(d => d.Contains("\\Data\\"))} 個核心模組 ===");
-                    }
-                    else
-                    {
-                        Logger.LogWarning($"Data 資料夾不存在: {dataPath}");
-                    }
-                }
-                
-                // 3. 掃描工作坊模組
-                if (!string.IsNullOrEmpty(WorkshopPath))
-                {
-                    if (Directory.Exists(WorkshopPath))
-                    {
-                        allDirectories.AddRange(Directory.GetDirectories(WorkshopPath));
-                        System.Diagnostics.Debug.WriteLine($"掃描工作坊模組: {WorkshopPath}");
-                    }
-                }
-
+                // 收集所有需要掃描的目錄
+                var allDirectories = CollectModDirectories();
                 int total = allDirectories.Count;
                 int processed = 0;
                 
@@ -917,41 +1043,12 @@ namespace RimWorldTranslationTool
                         }
                         
                         processed++;
-                        double progress = (double)processed / total * 100;
-                        
-                        // 減少 Dispatcher.Invoke 調用頻率
-                        if (processed % 5 == 0 || processed == total)
-                        {
-                            Dispatcher.Invoke(() =>
-                            {
-                                ScanProgressBar.Value = progress;
-                                ProgressTextBlock.Text = $"掃描中... {processed}/{total}";
-                                StatusTextBlock.Text = $"正在掃描模組... {processed}/{total}";
-                            });
-                        }
+                        UpdateScanProgress(processed, total);
                     }
                 });
 
-                // 一次性更新所有模組
-                _mods.AddRange(modInfos);
-                
-                // 建立翻譯補丁對應關係
-                BuildTranslationMappings();
-                
-                ModsDataGrid.ItemsSource = _mods;
-                StatusTextBlock.Text = $"找到 {_mods.Count} 個模組";
-                ProgressTextBlock.Text = "掃描完成！";
-                
-                // 掃描完成後，自動載入 ModsConfig.xml（如果已設定）
-                if (!string.IsNullOrEmpty(_modsConfigPath) && File.Exists(_modsConfigPath))
-                {
-                    System.Diagnostics.Debug.WriteLine("模組掃描完成，開始載入 ModsConfig.xml...");
-                    LoadModsConfig();
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("模組掃描完成，但未設定 ModsConfig.xml 路徑");
-                }
+                // 完成掃描
+                CompleteScan(modInfos);
             }
             finally
             {
@@ -1026,8 +1123,9 @@ namespace RimWorldTranslationTool
                         bitmap.Freeze();
                         modInfo.PreviewImage = bitmap;
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Logger.LogError("載入預覽圖片失敗", ex);
                         // 如果載入圖片失敗，使用預設圖片
                     }
                 }
@@ -1036,7 +1134,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"載入模組信息失敗 {modPath}: {ex.Message}");
+                Logger.LogError($"載入模組信息失敗 {modPath}", ex);
                 return null;
             }
         }
@@ -1142,10 +1240,11 @@ namespace RimWorldTranslationTool
         private List<ModInfo> GetTargetModsForTranslation(ModInfo translationMod)
         {
             var targetMods = new List<ModInfo>();
-            var transModPath = Path.Combine(FolderPath, translationMod.FolderName);
             
             try
             {
+                var transModPath = ValidateModPath(FolderPath, translationMod.FolderName);
+                
                 // 檢查翻譯模組的 DefInjected 內容
                 var defInjectedPath = Path.Combine(transModPath, "Languages", "ChineseTraditional", "DefInjected");
                 if (Directory.Exists(defInjectedPath))
@@ -1180,7 +1279,10 @@ namespace RimWorldTranslationTool
                                 }
                             }
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"解析翻譯檔案失敗 {file}", ex);
+                        }
                     }
                 }
                 
@@ -1210,7 +1312,10 @@ namespace RimWorldTranslationTool
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Logger.LogError("建立翻譯對應關係時發生錯誤", ex);
+            }
             
             return targetMods;
         }
@@ -1242,7 +1347,10 @@ namespace RimWorldTranslationTool
                                 if (hasTranslatableContent == true)
                                     return "是";
                             }
-                            catch { }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError($"檢查可翻譯內容時發生錯誤 {file}", ex);
+                            }
                         }
                     }
                 }
@@ -1289,7 +1397,7 @@ namespace RimWorldTranslationTool
         {
             try
             {
-                string modPath = Path.Combine(FolderPath, modInfo.FolderName);
+                string modPath = ValidateModPath(FolderPath, modInfo.FolderName);
                 if (Directory.Exists(modPath))
                 {
                     Process.Start(new ProcessStartInfo
@@ -1312,20 +1420,12 @@ namespace RimWorldTranslationTool
         private void SelectModsConfigButton_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "選擇 ModsConfig.xml 檔案",
-                Filter = "XML 檔案|*.xml|所有檔案|*.*",
-                CheckFileExists = true,
-                InitialDirectory = !string.IsNullOrEmpty(_modsConfigPath) ? 
-                    Path.GetDirectoryName(_modsConfigPath) : 
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-            };
             
             if (dialog.ShowDialog() == true)
             {
                 _modsConfigPath = dialog.FileName;
                 ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
-                SaveSettings(); // 自動儲存設定
+                _ = Task.Run(async () => await SaveSettingsAsync()); // 自動儲存設定
                 
                 // 檢查是否有模組，如果有才立即載入
                 if (_mods.Count > 0)
@@ -1341,25 +1441,26 @@ namespace RimWorldTranslationTool
             }
         }
         
-        private void LoadModsConfig()
+        /// <summary>
+        /// 載入並解析 ModsConfig.xml 檔案
+        /// </summary>
+        private List<string>? ParseModsConfig()
         {
-            System.Diagnostics.Debug.WriteLine("=== LoadModsConfig 開始 ===");
+            if (string.IsNullOrEmpty(_modsConfigPath))
+            {
+                Logger.LogWarning("ModsConfig 路徑為空");
+                return null;
+            }
+            
+            if (!File.Exists(_modsConfigPath))
+            {
+                Logger.LogWarning($"ModsConfig 檔案不存在: {_modsConfigPath}");
+                return null;
+            }
             
             try
             {
-                if (string.IsNullOrEmpty(_modsConfigPath))
-                {
-                    System.Diagnostics.Debug.WriteLine("ModsConfig 路徑為空");
-                    return;
-                }
-                
-                if (!File.Exists(_modsConfigPath))
-                {
-                    System.Diagnostics.Debug.WriteLine($"ModsConfig 檔案不存在: {_modsConfigPath}");
-                    return;
-                }
-                
-                System.Diagnostics.Debug.WriteLine($"正在載入 ModsConfig: {_modsConfigPath}");
+                Logger.Log($"正在載入 ModsConfig: {_modsConfigPath}");
                 
                 var xml = System.Xml.Linq.XDocument.Load(_modsConfigPath);
                 var activeMods = xml.Root?.Element("activeMods")?.Elements("li")
@@ -1368,158 +1469,225 @@ namespace RimWorldTranslationTool
                 
                 if (activeMods == null)
                 {
-                    System.Diagnostics.Debug.WriteLine("無法解析 activeMods 元素");
-                    return;
+                    Logger.LogWarning("無法解析 activeMods 元素");
+                    return null;
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"=== ModsConfig.xml 載入開始 ===");
-                System.Diagnostics.Debug.WriteLine($"啟用模組數量: {activeMods.Count}");
-                System.Diagnostics.Debug.WriteLine($"程式模組數量: {_mods.Count}");
-                
-                // 詳細調試：輸出前10個啟用的模組ID
-                System.Diagnostics.Debug.WriteLine("=== 前10個啟用的模組ID ===");
-                foreach (var modId in activeMods.Take(10))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  啟用ID: '{modId}'");
-                }
-                
-                // 詳細調試：輸出前10個程式模組的PackageId和FolderName
-                System.Diagnostics.Debug.WriteLine("=== 前10個程式模組 ===");
-                foreach (var mod in _mods.Take(10))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  程式模組: {mod.Name}");
-                    System.Diagnostics.Debug.WriteLine($"    PackageId: '{mod.PackageId}'");
-                    System.Diagnostics.Debug.WriteLine($"    FolderName: '{mod.FolderName}'");
-                }
-                
-                // 標記已啟用的模組
-                int matchedCount = 0;
-                foreach (var mod in _mods)
-                {
-                    bool wasEnabled = mod.IsEnabled;
-                    
-                    // 更嚴格的匹配邏輯 - 使用大小寫不敏感匹配
-                    bool packageIdMatch = !string.IsNullOrEmpty(mod.PackageId) && 
-                                        activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
-                    bool folderNameMatch = !string.IsNullOrEmpty(mod.FolderName) && 
-                                         activeMods.Any(id => id.Equals(mod.FolderName, StringComparison.OrdinalIgnoreCase));
-                    
-                    mod.IsEnabled = packageIdMatch || folderNameMatch;
-                        
-                    if (mod.IsEnabled)
-                    {
-                        matchedCount++;
-                        Logger.LogSuccess($"啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
-                        Logger.Log($"  匹配方式: {(packageIdMatch ? "PackageId" : "FolderName")}");
-                    }
-                    else
-                    {
-                        Logger.LogWarning($"未啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
-                        
-                        // 詳細調試：檢查為什麼沒匹配到
-                        if (!string.IsNullOrEmpty(mod.PackageId))
-                        {
-                            var exactMatch = activeMods.Contains(mod.PackageId);
-                            var caseMatch = activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
-                            var trimMatch = activeMods.Any(id => id.Trim() == mod.PackageId.Trim());
-                            
-                            Logger.Log($"PackageId詳細分析:");
-                            Logger.Log($"  PackageId長度: {mod.PackageId.Length}");
-                            Logger.Log($"  PackageId bytes: [{string.Join(",", System.Text.Encoding.UTF8.GetBytes(mod.PackageId))}]");
-                            Logger.Log($"  精確匹配: {exactMatch}");
-                            Logger.Log($"  忽略大小寫匹配: {caseMatch}");
-                            Logger.Log($"  去空白匹配: {trimMatch}");
-                            
-                            // 找出相似的ID
-                            var similarIds = activeMods.Where(id => 
-                                id.Contains(mod.PackageId) || mod.PackageId.Contains(id)).Take(3);
-                            if (similarIds.Any())
-                            {
-                                Logger.Log($"  相似的啟用ID: {string.Join(", ", similarIds)}");
-                            }
-                            else
-                            {
-                                Logger.Log($"  沒有找到相似的啟用ID");
-                            }
-                        }
-                        else
-                        {
-                            Logger.LogWarning($"PackageId為空或null");
-                        }
-                    }
-                }
-                
-                Logger.LogInfo($"匹配到的啟用模組: {matchedCount}");
-                Logger.Log("=== ModsConfig.xml 載入完成 ===");
-                
-                // 刷新顯示
-                ModsDataGrid.Items.Refresh();
-                UpdateModManagementLists();
-                
-                // 強制更新所有相關UI
-                if (ModPoolListBox != null)
-                {
-                    ModPoolListBox.Items.Refresh();
-                }
-                if (EnabledModsListBox != null)
-                {
-                    EnabledModsListBox.Items.Refresh();
-                }
-                
-                StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組，{matchedCount} 個匹配";
-                
-                // 顯示匹配結果給用戶
-                System.Diagnostics.Debug.WriteLine("準備顯示匹配結果給用戶...");
-                
-                if (matchedCount < activeMods.Count)
-                {
-                    var missingCount = activeMods.Count - matchedCount;
-                    System.Diagnostics.Debug.WriteLine($"顯示部分匹配訊息，缺少 {missingCount} 個模組");
-                    
-                    // 找出未匹配的模組ID - 使用大小寫不敏感匹配
-                    var unmatchedIds = activeMods.Where(id => 
-                        !_mods.Any(mod => 
-                            (!string.IsNullOrEmpty(mod.PackageId) && mod.PackageId.Equals(id, StringComparison.OrdinalIgnoreCase)) ||
-                            (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName.Equals(id, StringComparison.OrdinalIgnoreCase)))).Take(20);
-                    
-                    var details = $"啟用模組數量: {activeMods.Count}\n" +
-                                 $"匹配到的模組: {matchedCount}\n" +
-                                 $"缺少的模組: {missingCount}\n\n" +
-                                 $"程式模組數量: {_mods.Count}\n" +
-                                 $"ModsConfig 路徑: {_modsConfigPath}\n\n" +
-                                 $"未匹配的模組ID（前20個）:\n" +
-                                 string.Join("\n", unmatchedIds);
-                    
-                    ShowErrorWithCopy("部分模組未匹配", 
-                        $"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
-                        $"這可能是因為：\n" +
-                        $"• 模組目錄路徑不對\n" +
-                        $"• 模組的 PackageId 讀取失敗\n" +
-                        $"• 模組資料夾名稱不匹配\n\n" +
-                        $"請檢查模組目錄設置是否正確。\n\n" +
-                        $"詳細資訊中包含未匹配的模組ID，請檢查是否對應正確的模組。", details);
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("顯示完全匹配訊息");
-                    
-                    var details = $"啟用模組數量: {activeMods.Count}\n" +
-                                 $"匹配到的模組: {matchedCount}\n" +
-                                 $"程式模組數量: {_mods.Count}\n" +
-                                 $"ModsConfig 路徑: {_modsConfigPath}";
-                    
-                    ShowErrorWithCopy("載入成功", 
-                        $"ModsConfig.xml 載入成功！\n\n" +
-                        $"✅ {activeMods.Count} 個啟用模組全部匹配", details);
-                }
+                Logger.Log($"成功解析 ModsConfig.xml，找到 {activeMods.Count} 個啟用模組");
+                return activeMods;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadModsConfig 發生錯誤: {ex.Message}");
+                Logger.LogError("解析 ModsConfig.xml 時發生錯誤", ex);
+                return null;
+            }
+        }
+        
+        /// <summary>
+        /// 匹配程式模組與 ModsConfig 中的啟用模組
+        /// </summary>
+        private int MatchEnabledMods(List<string> activeMods)
+        {
+            Logger.Log($"=== 開始匹配啟用模組 ===");
+            Logger.Log($"啟用模組數量: {activeMods.Count}");
+            Logger.Log($"程式模組數量: {_mods.Count}");
+            
+            // 詳細調試：輸出前10個啟用的模組ID
+            Logger.Log("=== 前10個啟用的模組ID ===");
+            foreach (var modId in activeMods.Take(10))
+            {
+                Logger.Log($"  啟用ID: '{modId}'");
+            }
+            
+            // 詳細調試：輸出前10個程式模組的PackageId和FolderName
+            Logger.Log("=== 前10個程式模組 ===");
+            foreach (var mod in _mods.Take(10))
+            {
+                Logger.Log($"  程式模組: {mod.Name}");
+                Logger.Log($"    PackageId: '{mod.PackageId}'");
+                Logger.Log($"    FolderName: '{mod.FolderName}'");
+            }
+            
+            int matchedCount = 0;
+            foreach (var mod in _mods)
+            {
+                bool wasEnabled = mod.IsEnabled;
+                
+                // 更嚴格的匹配邏輯 - 使用大小寫不敏感匹配
+                bool packageIdMatch = !string.IsNullOrEmpty(mod.PackageId) && 
+                                    activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
+                bool folderNameMatch = !string.IsNullOrEmpty(mod.FolderName) && 
+                                     activeMods.Any(id => id.Equals(mod.FolderName, StringComparison.OrdinalIgnoreCase));
+                
+                mod.IsEnabled = packageIdMatch || folderNameMatch;
+                    
+                if (mod.IsEnabled)
+                {
+                    matchedCount++;
+                    Logger.LogSuccess($"啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+                    Logger.Log($"  匹配方式: {(packageIdMatch ? "PackageId" : "FolderName")}");
+                }
+                else
+                {
+                    LogUnmatchedMod(mod, activeMods);
+                }
+            }
+            
+            Logger.LogInfo($"匹配到的啟用模組: {matchedCount}");
+            Logger.Log("=== 啟用模組匹配完成 ===");
+            return matchedCount;
+        }
+        
+        /// <summary>
+        /// 記錄未匹配的模組詳細信息
+        /// </summary>
+        private void LogUnmatchedMod(ModInfo mod, List<string> activeMods)
+        {
+            Logger.LogWarning($"未啟用模組: {mod.Name} (PackageId: '{mod.PackageId}', Folder: '{mod.FolderName}')");
+            
+            if (!string.IsNullOrEmpty(mod.PackageId))
+            {
+                var exactMatch = activeMods.Contains(mod.PackageId);
+                var caseMatch = activeMods.Any(id => id.Equals(mod.PackageId, StringComparison.OrdinalIgnoreCase));
+                var trimMatch = activeMods.Any(id => id.Trim() == mod.PackageId.Trim());
+                
+                Logger.Log($"PackageId詳細分析:");
+                Logger.Log($"  PackageId長度: {mod.PackageId.Length}");
+                Logger.Log($"  PackageId bytes: [{string.Join(",", System.Text.Encoding.UTF8.GetBytes(mod.PackageId))}]");
+                Logger.Log($"  精確匹配: {exactMatch}");
+                Logger.Log($"  忽略大小寫匹配: {caseMatch}");
+                Logger.Log($"  去空白匹配: {trimMatch}");
+                
+                // 找出相似的ID
+                var similarIds = activeMods.Where(id => 
+                    id.Contains(mod.PackageId) || mod.PackageId.Contains(id)).Take(3);
+                if (similarIds.Any())
+                {
+                    Logger.Log($"  相似的啟用ID: {string.Join(", ", similarIds)}");
+                }
+                else
+                {
+                    Logger.Log($"  沒有找到相似的啟用ID");
+                }
+            }
+            else
+            {
+                Logger.LogWarning($"PackageId為空或null");
+            }
+        }
+        
+        /// <summary>
+        /// 顯示匹配結果給用戶
+        /// </summary>
+        private void ShowMatchResults(int matchedCount, List<string> activeMods)
+        {
+            if (matchedCount < activeMods.Count)
+            {
+                var missingCount = activeMods.Count - matchedCount;
+                ShowPartialMatchResults(missingCount, activeMods);
+            }
+            else
+            {
+                ShowCompleteMatchResults(activeMods);
+            }
+        }
+        
+        /// <summary>
+        /// 顯示部分匹配結果
+        /// </summary>
+        private void ShowPartialMatchResults(int missingCount, List<string> activeMods)
+        {
+            Logger.Log($"顯示部分匹配訊息，缺少 {missingCount} 個模組");
+            
+            // 找出未匹配的模組ID - 使用大小寫不敏感匹配
+            var unmatchedIds = activeMods.Where(id => 
+                !_mods.Any(mod => 
+                    (!string.IsNullOrEmpty(mod.PackageId) && mod.PackageId.Equals(id, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrEmpty(mod.FolderName) && mod.FolderName.Equals(id, StringComparison.OrdinalIgnoreCase)))).Take(20);
+            
+            var details = $"啟用模組數量: {activeMods.Count}\n" +
+                         $"匹配到的模組: {_mods.Count(m => m.IsEnabled)}\n" +
+                         $"缺少的模組: {missingCount}\n\n" +
+                         $"程式模組數量: {_mods.Count}\n" +
+                         $"ModsConfig 路徑: {_modsConfigPath}\n\n" +
+                         $"未匹配的模組ID（前20個）:\n" +
+                         string.Join("\n", unmatchedIds);
+            
+            ShowErrorWithCopy("部分模組未匹配", 
+                $"ModsConfig.xml 已載入，但 {missingCount} 個模組在程式中找不到。\n\n" +
+                $"這可能是因為：\n" +
+                $"• 模組目錄路徑不對\n" +
+                $"• 模組的 PackageId 讀取失敗\n" +
+                $"• 模組資料夾名稱不匹配\n\n" +
+                $"請檢查模組目錄設置是否正確。\n\n" +
+                $"詳細資訊中包含未匹配的模組ID，請檢查是否對應正確的模組。", details);
+        }
+        
+        /// <summary>
+        /// 顯示完全匹配結果
+        /// </summary>
+        private void ShowCompleteMatchResults(List<string> activeMods)
+        {
+            Logger.Log($"顯示完全匹配訊息");
+            
+            var details = $"啟用模組數量: {activeMods.Count}\n" +
+                         $"匹配到的模組: {_mods.Count(m => m.IsEnabled)}\n" +
+                         $"程式模組數量: {_mods.Count}\n" +
+                         $"ModsConfig 路徑: {_modsConfigPath}";
+            
+            ShowErrorWithCopy("載入成功", 
+                $"ModsConfig.xml 載入成功！\n\n" +
+                $"✅ {activeMods.Count} 個啟用模組全部匹配", details);
+        }
+
+        private void LoadModsConfig()
+        {
+            Logger.Log("=== LoadModsConfig 開始 ===");
+            
+            try
+            {
+                // 解析 ModsConfig.xml
+                var activeMods = ParseModsConfig();
+                if (activeMods == null) return;
+                
+                // 匹配啟用模組
+                int matchedCount = MatchEnabledMods(activeMods);
+                
+                // 刷新顯示
+                RefreshModListsDisplay();
+                
+                // 顯示結果
+                ShowMatchResults(matchedCount, activeMods);
+                
+                StatusTextBlock.Text = $"已載入 ModsConfig.xml，{activeMods.Count} 個已啟用模組，{matchedCount} 個匹配";
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("LoadModsConfig 發生錯誤", ex);
                 ShowErrorWithCopy("載入 ModsConfig 失敗", $"載入 ModsConfig.xml 時發生錯誤", ex.ToString());
             }
             
-            System.Diagnostics.Debug.WriteLine("=== LoadModsConfig 結束 ===");
+            Logger.Log("=== LoadModsConfig 結束 ===");
+        }
+        
+        /// <summary>
+        /// 刷新模組列表顯示
+        /// </summary>
+        private void RefreshModListsDisplay()
+        {
+            // 刷新顯示
+            ModsDataGrid.Items.Refresh();
+            UpdateModManagementLists();
+            
+            // 強制更新所有相關UI
+            if (ModPoolListBox != null)
+            {
+                ModPoolListBox.Items.Refresh();
+            }
+            if (EnabledModsListBox != null)
+            {
+                EnabledModsListBox.Items.Refresh();
+            }
         }
 
         private void SortModsByConfig()
@@ -1640,7 +1808,10 @@ namespace RimWorldTranslationTool
                             .ToList();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Logger.LogError("載入 ModsConfig 時發生錯誤", ex);
+                }
             }
             
             EnabledModsListBox.ItemsSource = null;
@@ -2253,8 +2424,10 @@ namespace RimWorldTranslationTool
         }
     }
 
-    public class ModInfo
+    public class ModInfo : System.ComponentModel.INotifyPropertyChanged, IDisposable
     {
+        private BitmapImage? _previewImage;
+        
         public string FolderName { get; set; } = "";
         public string Name { get; set; } = "";
         public string Author { get; set; } = "";
@@ -2266,7 +2439,20 @@ namespace RimWorldTranslationTool
         public string CanTranslate { get; set; } = "否";
         public bool IsVersionCompatible { get; set; } = true;
         public bool IsEnabled { get; set; } = false;
-        public BitmapImage? PreviewImage { get; set; }
+        
+        public BitmapImage? PreviewImage 
+        { 
+            get => _previewImage;
+            set
+            {
+                if (_previewImage != value)
+                {
+                    DisposePreviewImage();
+                    _previewImage = value;
+                    OnPropertyChanged(nameof(PreviewImage));
+                }
+            }
+        }
         
         // 顏色屬性
         public Brush HasChineseTraditionalColor => GetStatusColor(HasChineseTraditional);
@@ -2302,6 +2488,27 @@ namespace RimWorldTranslationTool
                 "無" or "否" => new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)),
                 _ => new SolidColorBrush(Colors.Transparent) // 正常狀態無底色
             };
+        }
+        
+        private void DisposePreviewImage()
+        {
+            if (_previewImage != null)
+            {
+                _previewImage.UriSource = null;
+                _previewImage = null;
+            }
+        }
+        
+        public void Dispose()
+        {
+            DisposePreviewImage();
+        }
+        
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
         }
         
         private void TestI18nButton_Click(object sender, RoutedEventArgs e)
