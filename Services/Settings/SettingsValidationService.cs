@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
@@ -9,6 +10,13 @@ namespace RimWorldTranslationTool.Services.Settings
     /// </summary>
     public class SettingsValidationService
     {
+        private readonly IPathService _pathService;
+        
+        public SettingsValidationService(IPathService pathService)
+        {
+            _pathService = pathService;
+        }
+        
         /// <summary>
         /// 驗證遊戲路徑
         /// </summary>
@@ -16,66 +24,13 @@ namespace RimWorldTranslationTool.Services.Settings
         {
             return await Task.Run(() =>
             {
-                if (string.IsNullOrEmpty(path))
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Message = "路徑不能為空",
-                        Status = ValidationStatus.Error
-                    };
-                }
-                
-                if (!Directory.Exists(path))
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Message = "目錄不存在",
-                        Status = ValidationStatus.Error
-                    };
-                }
-                
-                // 檢查是否為有效的 RimWorld 目錄
-                string exePath = Path.Combine(path, "RimWorldWin64.exe");
-                string dataPath = Path.Combine(path, "Data");
-                string aboutPath = Path.Combine(path, "About", "About.xml");
-                
-                if (File.Exists(exePath) && Directory.Exists(dataPath))
-                {
-                    return new ValidationResult
-                    {
-                        IsValid = true,
-                        Message = "有效的 RimWorld 目錄",
-                        Status = ValidationStatus.Valid
-                    };
-                }
-                else if (Directory.Exists(path))
-                {
-                    // 檢查是否有 About.xml（可能是模組目錄）
-                    if (File.Exists(aboutPath))
-                    {
-                        return new ValidationResult
-                        {
-                            IsValid = false,
-                            Message = "這是模組目錄，不是遊戲目錄",
-                            Status = ValidationStatus.Error
-                        };
-                    }
-                    
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Message = "目錄存在但可能不是 RimWorld 遊戲目錄",
-                        Status = ValidationStatus.Warning
-                    };
-                }
+                var pathResult = _pathService.IsValidGamePath(path);
                 
                 return new ValidationResult
                 {
-                    IsValid = false,
-                    Message = "無效的路徑",
-                    Status = ValidationStatus.Error
+                    IsValid = pathResult.IsValid,
+                    Message = pathResult.Message,
+                    Status = (ValidationStatus)pathResult.Status
                 };
             });
         }
@@ -107,7 +62,7 @@ namespace RimWorldTranslationTool.Services.Settings
                     };
                 }
                 
-                if (!Path.GetFileName(path).Equals("ModsConfig.xml", StringComparison.OrdinalIgnoreCase))
+                if (!Path.GetFileName(path).Equals(PathConstants.ModsConfigFileName, StringComparison.OrdinalIgnoreCase))
                 {
                     return new ValidationResult
                     {

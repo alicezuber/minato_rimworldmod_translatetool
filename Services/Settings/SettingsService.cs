@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
@@ -15,11 +16,13 @@ namespace RimWorldTranslationTool.Services.Settings
     {
         private readonly SettingsManager _settingsManager;
         private readonly SettingsValidationService _validationService;
+        private readonly IPathService _pathService;
         
-        public SettingsService(SettingsValidationService validationService)
+        public SettingsService(SettingsValidationService validationService, IPathService pathService)
         {
             _settingsManager = SettingsManager.Instance;
             _validationService = validationService;
+            _pathService = pathService;
             
             // 轉發事件
             _settingsManager.SettingsLoaded += (s, e) => SettingsLoaded?.Invoke(this, e);
@@ -58,16 +61,8 @@ namespace RimWorldTranslationTool.Services.Settings
                     return false;
                 }
                 
-                // 查找 ModsConfig.xml
-                string configPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "..", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios", "Config", "ModsConfig.xml");
-                
-                if (!File.Exists(configPath))
-                {
-                    // 嘗試遊戲目錄下的 Config
-                    configPath = Path.Combine(settings.GamePath, "Config", "ModsConfig.xml");
-                }
+                // 使用 PathService 獲取 ModsConfig.xml 路徑
+                string configPath = _pathService.GetModsConfigPath();
                 
                 if (File.Exists(configPath))
                 {

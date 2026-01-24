@@ -53,17 +53,14 @@ namespace RimWorldTranslationTool
         private readonly Services.Settings.ISettingsService _settingsService;
         private readonly Services.Settings.SettingsValidationService _validationService;
         private readonly Services.Settings.SettingsBackupService _backupService;
+        private readonly Services.Paths.IPathService _pathService;
         
         // 路徑屬性（用於 UI 綁定）
         private string _gamePath = "";
         
-        // 自動推導的路徑
-        private string WorkshopPath => !string.IsNullOrEmpty(_gamePath) ? 
-            Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_gamePath)) ?? "", "workshop", "content", "294100") : "";
-        
-        private string ConfigPath => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), 
-            "..", "LocalLow", "Ludeon Studios", "RimWorld by Ludeon Studios");
+        // 自動推導的路徑 - 現在通過 PathService 統一管理
+        private string WorkshopPath => _pathService.GetWorkshopPath(_gamePath);
+        private string ConfigPath => _pathService.GetConfigPath();
         
         // 模組管理相關
         private List<ModInfo> _modPool = new List<ModInfo>();
@@ -74,10 +71,13 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
+            // 初始化路徑服務
+            _pathService = new Services.Paths.PathService();
+            
             // 初始化設定服務
-            _validationService = new Services.Settings.SettingsValidationService();
+            _validationService = new Services.Settings.SettingsValidationService(_pathService);
             _backupService = new Services.Settings.SettingsBackupService();
-            _settingsService = new Services.Settings.SettingsService(_validationService);
+            _settingsService = new Services.Settings.SettingsService(_validationService, _pathService);
             _settingsController = new Controllers.SettingsController(_settingsService, _backupService, this);
             
             // 測試 i18n 功能
