@@ -39,6 +39,7 @@ namespace RimWorldTranslationTool
 
     public partial class MainWindow : Window, System.ComponentModel.INotifyPropertyChanged
     {
+        // 模組相關
         private List<ModInfo> _mods = new List<ModInfo>();
         private ModInfo? _selectedMod;
         private List<ModInfo> _localMods = new List<ModInfo>();
@@ -47,11 +48,14 @@ namespace RimWorldTranslationTool
         private string _selectedGameVersion = "1.6";
         private string _modsConfigPath = "";
         
-        // 簡化的路徑設定 - 只需要遊戲路徑
-        private string _gamePath = "";
+        // 設定控制器
+        private readonly Controllers.SettingsController _settingsController;
+        private readonly Services.Settings.ISettingsService _settingsService;
+        private readonly Services.Settings.SettingsValidationService _validationService;
+        private readonly Services.Settings.SettingsBackupService _backupService;
         
-        // 設定管理器
-        private readonly SettingsManager _settingsManager = SettingsManager.Instance;
+        // 路徑屬性（用於 UI 綁定）
+        private string _gamePath = "";
         
         // 自動推導的路徑
         private string WorkshopPath => !string.IsNullOrEmpty(_gamePath) ? 
@@ -70,9 +74,11 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
-            // 註冊設定管理器事件
-            _settingsManager.SettingsLoaded += OnSettingsLoaded;
-            _settingsManager.SettingsSaved += OnSettingsSaved;
+            // 初始化設定服務
+            _validationService = new Services.Settings.SettingsValidationService();
+            _backupService = new Services.Settings.SettingsBackupService();
+            _settingsService = new Services.Settings.SettingsService(_validationService);
+            _settingsController = new Controllers.SettingsController(_settingsService, _backupService, this);
             
             // 測試 i18n 功能
             TestI18n();
@@ -87,7 +93,7 @@ namespace RimWorldTranslationTool
             ModsDataGrid.SelectionChanged += ModsDataGrid_SelectionChanged;
             LocalModsDataGrid.SelectionChanged += LocalModsDataGrid_SelectionChanged;
             
-            // 延遲更新 UI，確保控制項已初始化
+            // 延遲初始化設定
             this.Loaded += MainWindow_Loaded;
         }
         
@@ -161,77 +167,14 @@ namespace RimWorldTranslationTool
         
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 載入設定
-            await _settingsManager.LoadSettingsAsync();
-            
-            // 啟用手動保存模式（只允許手動保存）
-            _settingsManager.EnableManualSaveMode();
-            
-            // 不要在啟動時立即載入 ModsConfig.xml
-            // 等待用戶掃描模組後再載入
-            System.Diagnostics.Debug.WriteLine("程式啟動完成，手動保存模式已啟用");
+            // 初始化設定控制器
+            await _settingsController.InitializeAsync();
         }
         
-        /// <summary>
-        /// 設定載入完成事件處理器
-        /// </summary>
-        private void OnSettingsLoaded(object? sender, SettingsLoadedEventArgs e)
-        {
-            var settings = e.Settings;
-            
-            Logger.Log($"開始載入設定到 UI - GamePath: '{settings.GamePath}', Version: '{settings.GameVersion}'");
-            
-            // 載入設定到 UI
-            GamePath = settings.GamePath;
-            _modsConfigPath = settings.ModsConfigPath;
-            _selectedGameVersion = settings.GameVersion;
-            
-            // 載入語言設定
-            if (!string.IsNullOrEmpty(settings.Language))
-            {
-                LocalizationService.Instance.SetLanguage(settings.Language);
-            }
-            
-            // 載入主題設定
-            ThemeManager.Instance.LoadThemeFromSettings(settings.Theme);
-            UpdateThemeIcon();
-            
-            Logger.Log("設定已載入到 UI");
-            
-            // 確保 UI 更新
-            Dispatcher.BeginInvoke(() =>
-            {
-                Logger.Log("開始更新 UI 控制項");
-                UpdateAllUI();
-                Logger.Log($"UI 更新完成 - GamePath: '{GamePath}', TextBox: '{GamePathTextBox?.Text}'");
-            });
-        }
-        
-        /// <summary>
-        /// 設定保存完成事件處理器
-        /// </summary>
-        private void OnSettingsSaved(object? sender, SettingsSavedEventArgs e)
-        {
-            Logger.Log("設定保存完成");
-        }
-        
-        private void UpdateAllUI()
-        {
-            // 更新路徑顯示
-            UpdatePathDisplay();
-            
-            // 更新 ModsConfigPath 顯示
-            if (ModsConfigPathText != null && !string.IsNullOrEmpty(_modsConfigPath))
-            {
-                ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
-            }
-            
-            // 更新遊戲版本選擇
-            if (GameVersionComboBox != null && !string.IsNullOrEmpty(_selectedGameVersion))
-            {
-                GameVersionComboBox.SelectedItem = _selectedGameVersion;
-            }
-        }
+        // 清理不再需要的方法
+        // private void UpdateAllUI() - 已移至 SettingsController
+        // private void OnSettingsLoaded() - 已移至 SettingsController
+        // private void OnSettingsSaved() - 已移至 SettingsController
         
         private void InitializeGameVersions()
         {
@@ -260,7 +203,7 @@ namespace RimWorldTranslationTool
             LanguageComboBox.SelectedItem = languages.FirstOrDefault(l => l.Code == currentLanguage);
         }
 
-        // 簡化的屬性 - 只需要遊戲路徑
+        // 設定屬性 - 現在通過 SettingsController 管理
         public string GamePath 
         { 
             get => _gamePath;
@@ -271,11 +214,11 @@ namespace RimWorldTranslationTool
                     _gamePath = value;
                     OnPropertyChanged(nameof(GamePath));
                     OnPropertyChanged(nameof(FolderPath));
-                    OnPropertyChanged(nameof(WorkshopPath)); // 通知自動推導的路徑也更新
+                    OnPropertyChanged(nameof(WorkshopPath));
                     OnPropertyChanged(nameof(ConfigPath));
                     
-                    // 使用設定管理器觸發自動保存
-                    _settingsManager.UpdateSetting(settings => settings.GamePath = value);
+                    // 通過控制器處理
+                    _ = _settingsController.HandleGamePathChanged(value);
                 }
             }
         }
@@ -290,11 +233,11 @@ namespace RimWorldTranslationTool
                     _gamePath = value;
                     OnPropertyChanged(nameof(FolderPath));
                     OnPropertyChanged(nameof(GamePath));
-                    OnPropertyChanged(nameof(WorkshopPath)); // 通知自動推導的路徑也更新
+                    OnPropertyChanged(nameof(WorkshopPath));
                     OnPropertyChanged(nameof(ConfigPath));
                     
-                    // 使用設定管理器觸發自動保存
-                    _settingsManager.UpdateSetting(settings => settings.GamePath = value);
+                    // 通過控制器處理
+                    _ = _settingsController.HandleGamePathChanged(value);
                 }
             }
         }
@@ -332,7 +275,7 @@ namespace RimWorldTranslationTool
             if (GameVersionComboBox.SelectedItem is string selectedVersion)
             {
                 _selectedGameVersion = selectedVersion;
-                _settingsManager.UpdateSetting(settings => settings.GameVersion = selectedVersion);
+                _settingsService.UpdateSetting(settings => settings.GameVersion = selectedVersion);
                 RefreshVersionCompatibility();
             }
         }
@@ -348,7 +291,7 @@ namespace RimWorldTranslationTool
                 if (!string.IsNullOrEmpty(languageCode))
                 {
                     LocalizationService.Instance.SetLanguage(languageCode);
-                    _settingsManager.UpdateSetting(settings => settings.Language = languageCode);
+                    _settingsService.UpdateSetting(settings => settings.Language = languageCode);
                 }
             }
         }
@@ -357,7 +300,7 @@ namespace RimWorldTranslationTool
         {
             ThemeManager.Instance.ToggleTheme();
             UpdateThemeIcon();
-            _settingsManager.UpdateSetting(settings => settings.Theme = ThemeManager.Instance.GetThemeName());
+            _settingsService.UpdateSetting(settings => settings.Theme = ThemeManager.Instance.GetThemeName());
         }
         
         private void UpdateThemeIcon()
@@ -397,6 +340,8 @@ namespace RimWorldTranslationTool
             return versions.Contains(_selectedGameVersion);
         }
 
+        // 設定相關事件處理器 - 委托給 SettingsController
+        
         private void GamePathTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textBox)
@@ -404,11 +349,8 @@ namespace RimWorldTranslationTool
                 _gamePath = textBox.Text;
                 OnPropertyChanged(nameof(GamePath));
                 
-                // 即時驗證路徑
-                ValidateGamePath();
-                
-                // 觸發自動保存
-                _settingsManager.UpdateSetting(settings => settings.GamePath = _gamePath);
+                // 通過控制器處理
+                _ = _settingsController.HandleGamePathChanged(_gamePath);
                 
                 // 更新路徑顯示
                 OnPropertyChanged(nameof(WorkshopPath));
@@ -445,87 +387,36 @@ namespace RimWorldTranslationTool
             }
             e.Handled = true;
         }
-        
-        // 即時驗證遊戲路徑
-        private void ValidateGamePath()
-        {
-            if (string.IsNullOrEmpty(_gamePath))
-            {
-                GamePathValidationIcon.Text = "";
-                GamePathValidationText.Text = "";
-                GamePathStatusIcon.Visibility = Visibility.Collapsed;
-                return;
-            }
-            
-            if (Directory.Exists(_gamePath))
-            {
-                // 檢查是否為有效的 RimWorld 目錄
-                string exePath = Path.Combine(_gamePath, "RimWorldWin64.exe");
-                string dataPath = Path.Combine(_gamePath, "Data");
-                
-                if (File.Exists(exePath) && Directory.Exists(dataPath))
-                {
-                    GamePathValidationIcon.Text = "✓";
-                    GamePathValidationIcon.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94)); // 綠色
-                    GamePathValidationText.Text = "有效的 RimWorld 目錄";
-                    GamePathValidationText.Foreground = new SolidColorBrush(Color.FromRgb(34, 197, 94));
-                    GamePathStatusIcon.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    GamePathValidationIcon.Text = "⚠️";
-                    GamePathValidationIcon.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11)); // 黃色
-                    GamePathValidationText.Text = "目錄存在但可能不是 RimWorld 遊戲目錄";
-                    GamePathValidationText.Foreground = new SolidColorBrush(Color.FromRgb(245, 158, 11));
-                    GamePathStatusIcon.Visibility = Visibility.Collapsed;
-                }
-            }
-            else
-            {
-                GamePathValidationIcon.Text = "✗";
-                GamePathValidationIcon.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68)); // 紅色
-                GamePathValidationText.Text = "目錄不存在";
-                GamePathValidationText.Foreground = new SolidColorBrush(Color.FromRgb(239, 68, 68));
-                GamePathStatusIcon.Visibility = Visibility.Collapsed;
-            }
-        }
 
         private void BrowseGameButton_Click(object sender, RoutedEventArgs e)
         {
-            using var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            dialog.Description = "選擇 RimWorld 遊戲目錄 (steamapps\\common\\RimWorld)";
-            dialog.ShowNewFolderButton = false;
-            dialog.SelectedPath = GamePath;
-            
-            var result = dialog.ShowDialog();
-            if (result == System.Windows.Forms.DialogResult.OK)
-            {
-                GamePath = dialog.SelectedPath;
-            }
+            _settingsController.HandleBrowseGamePath();
+        }
+        
+        private void AutoDetectPaths_Click(object sender, RoutedEventArgs e)
+        {
+            _ = _settingsController.HandleAutoDetectModsConfig();
+        }
+        
+        private void SelectModsConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settingsController.HandleSelectModsConfig();
         }
         
         private async void ManualSaveButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                await _settingsManager.ManualSaveAsync();
-                MessageBox.Show("設定已手動儲存", "儲存成功", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"手動儲存失敗: {ex.Message}", "儲存失敗", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            await _settingsController.HandleManualSave();
         }
         
         // 新增的事件處理器
         private void AutoSaveCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            _settingsManager.EnableAutoSave();
+            _settingsController.HandleAutoSaveChanged(true);
         }
         
         private void AutoSaveCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            _settingsManager.DisableAutoSave();
+            _settingsController.HandleAutoSaveChanged(false);
         }
         
         private void CreateBackupButton_Click(object sender, RoutedEventArgs e)
@@ -556,100 +447,17 @@ namespace RimWorldTranslationTool
         
         private void ExportSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                SaveFileDialog dialog = new SaveFileDialog
-                {
-                    Filter = "JSON 檔案 (*.json)|*.json",
-                    Title = "匯出設定",
-                    FileName = $"RimWorldTranslationTool_Settings_{DateTime.Now:yyyyMMdd_HHmmss}.json"
-                };
-                
-                if (dialog.ShowDialog() == true)
-                {
-                    var settings = _settingsManager.GetCurrentSettings();
-                    var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-                    File.WriteAllText(dialog.FileName, json);
-                    MessageBox.Show("設定已匯出", "匯出成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"匯出設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            _ = _settingsController.HandleExportSettings();
         }
         
         private void ImportSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                OpenFileDialog dialog = new OpenFileDialog
-                {
-                    Filter = "JSON 檔案 (*.json)|*.json",
-                    Title = "匯入設定"
-                };
-                
-                if (dialog.ShowDialog() == true)
-                {
-                    var json = File.ReadAllText(dialog.FileName);
-                    var settings = JsonSerializer.Deserialize<AppSettings>(json);
-                    
-                    if (settings != null)
-                    {
-                        _settingsManager.UpdateSetting(s => 
-                        {
-                            s.GamePath = settings.GamePath;
-                            s.GameVersion = settings.GameVersion;
-                            s.Language = settings.Language;
-                        });
-                        
-                        // 更新 UI
-                        GamePathTextBox.Text = settings.GamePath;
-                        GameVersionComboBox.SelectedItem = settings.GameVersion;
-                        LanguageComboBox.SelectedItem = settings.Language;
-                        
-                        MessageBox.Show("設定已匯入", "匯入成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"匯入設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            _ = _settingsController.HandleImportSettings();
         }
         
         private void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
-                "確定要重設所有設定為預設值嗎？此操作無法復原。", 
-                "確認重設", 
-                MessageBoxButton.YesNo, 
-                MessageBoxImage.Warning);
-                
-            if (result == MessageBoxResult.Yes)
-            {
-                try
-                {
-                    var defaultSettings = new AppSettings();
-                    _settingsManager.UpdateSetting(s => 
-                    {
-                        s.GamePath = defaultSettings.GamePath;
-                        s.GameVersion = defaultSettings.GameVersion;
-                        s.Language = defaultSettings.Language;
-                    });
-                    
-                    // 更新 UI
-                    GamePathTextBox.Text = defaultSettings.GamePath;
-                    GameVersionComboBox.SelectedItem = defaultSettings.GameVersion;
-                    LanguageComboBox.SelectedItem = defaultSettings.Language;
-                    
-                    MessageBox.Show("設定已重設為預設值", "重設成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"重設設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
+            _settingsController.HandleResetSettings();
         }
 
         /// <summary>
@@ -1888,35 +1696,6 @@ namespace RimWorldTranslationTool
             }
         }
 
-        private void SelectModsConfigButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Title = "選擇 ModsConfig.xml 檔案",
-                Filter = "XML 檔案|*.xml",
-                RestoreDirectory = true
-            };
-            
-            if (dialog.ShowDialog() == true)
-            {
-                _modsConfigPath = dialog.FileName;
-                ModsConfigPathText.Text = Path.GetFileName(_modsConfigPath);
-                _settingsManager.UpdateSetting(settings => settings.ModsConfigPath = dialog.FileName);
-                
-                // 檢查是否有模組，如果有才立即載入
-                if (_mods.Count > 0)
-                {
-                    System.Diagnostics.Debug.WriteLine("已選擇 ModsConfig.xml 且有模組，立即載入...");
-                    LoadModsConfig();
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("已選擇 ModsConfig.xml 但尚無模組，等待掃描完成後載入");
-                    ShowInfoMessage("提示", "ModsConfig.xml 已選擇，將在模組掃描完成後自動載入");
-                }
-            }
-        }
-        
         /// <summary>
         /// 載入並解析 ModsConfig.xml 檔案
         /// </summary>
