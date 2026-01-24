@@ -120,6 +120,7 @@ namespace RimWorldTranslationTool
         public string WorkshopPath => GetString("WorkshopPath");
         public string ConfigPath => GetString("ConfigPath");
         public string AutoDetectPaths => GetString("AutoDetectPaths");
+        public string ManualSave => GetString("ManualSave");
         
         // ModsConfig Settings
         public string ModsConfigSettings => GetString("ModsConfigSettings");

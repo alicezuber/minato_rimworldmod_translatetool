@@ -17,6 +17,9 @@
   <data name="TabModManager" xml:space="preserve">
     <value>🔧 模組管理</value>
   </data>
+  <data name="TabLocalMods" xml:space="preserve">
+    <value>🏠 本地模組</value>
+  </data>
   
   <!-- Settings Tab -->
   <data name="RimWorldPathSettings" xml:space="preserve">
@@ -44,7 +47,10 @@
     <value>⚙️ 設定路徑：</value>
   </data>
   <data name="AutoDetectPaths" xml:space="preserve">
-    <value>🔍 自動檢測 RimWorld 路徑</value>
+    <value>🔄 重新推導路徑</value>
+  </data>
+  <data name="ManualSave" xml:space="preserve">
+    <value>💾 手動保存設定</value>
   </data>
   
   <!-- ModsConfig Settings -->
@@ -81,6 +87,23 @@
   </data>
   <data name="PreparingScan" xml:space="preserve">
     <value>準備掃描...</value>
+  </data>
+  
+  <!-- Local Mods Tab -->
+  <data name="ScanLocalMods" xml:space="preserve">
+    <value>🏠 掃描本地模組</value>
+  </data>
+  <data name="ReadyToScanLocalMods" xml:space="preserve">
+    <value>準備掃描本地模組...</value>
+  </data>
+  <data name="PreparingLocalModsScan" xml:space="preserve">
+    <value>準備掃描本地模組...</value>
+  </data>
+  <data name="LocalModDetails" xml:space="preserve">
+    <value>本地模組詳情</value>
+  </data>
+  <data name="SelectLocalModToViewDetails" xml:space="preserve">
+    <value>選擇一個本地模組查看詳細資訊</value>
   </data>
   
   <!-- DataGrid Headers -->

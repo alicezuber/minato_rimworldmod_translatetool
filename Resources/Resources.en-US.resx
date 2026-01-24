@@ -44,7 +44,10 @@
     <value>⚙️ Config Path:</value>
   </data>
   <data name="AutoDetectPaths" xml:space="preserve">
-    <value>🔍 Auto-detect RimWorld Paths</value>
+    <value>🔄 Rederive Paths</value>
+  </data>
+  <data name="ManualSave" xml:space="preserve">
+    <value>💾 Manual Save Settings</value>
   </data>
   
   <!-- ModsConfig Settings -->
