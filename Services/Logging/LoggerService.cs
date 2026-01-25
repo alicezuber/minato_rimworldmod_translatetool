@@ -17,7 +17,7 @@ namespace RimWorldTranslationTool.Services.Logging
     {
         private readonly LogConfiguration _config;
         private readonly ConcurrentQueue<LogEntry> _logQueue;
-        private readonly Timer _cleanupTimer;
+        private readonly Timer? _cleanupTimer;
         private readonly SemaphoreSlim _writeLock;
         private bool _disposed = false;
         

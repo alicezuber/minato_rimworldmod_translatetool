@@ -168,7 +168,10 @@ namespace RimWorldTranslationTool
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             // 初始化設定控制器
-            await _settingsController.InitializeAsync();
+            if (_settingsController != null)
+            {
+                await _settingsController.InitializeAsync();
+            }
         }
         
         // 清理不再需要的方法
@@ -218,7 +221,10 @@ namespace RimWorldTranslationTool
                     OnPropertyChanged(nameof(ConfigPath));
                     
                     // 通過控制器處理
-                    _ = _settingsController.HandleGamePathChanged(value);
+                    if (_settingsController != null)
+                    {
+                        _ = _settingsController.HandleGamePathChanged(value);
+                    }
                 }
             }
         }
@@ -237,7 +243,10 @@ namespace RimWorldTranslationTool
                     OnPropertyChanged(nameof(ConfigPath));
                     
                     // 通過控制器處理
-                    _ = _settingsController.HandleGamePathChanged(value);
+                    if (_settingsController != null)
+                    {
+                        _ = _settingsController.HandleGamePathChanged(value);
+                    }
                 }
             }
         }
@@ -350,7 +359,10 @@ namespace RimWorldTranslationTool
                 OnPropertyChanged(nameof(GamePath));
                 
                 // 通過控制器處理
-                _ = _settingsController.HandleGamePathChanged(_gamePath);
+                if (_settingsController != null)
+                {
+                    _ = _settingsController.HandleGamePathChanged(_gamePath);
+                }
                 
                 // 更新路徑顯示
                 OnPropertyChanged(nameof(WorkshopPath));
@@ -390,33 +402,39 @@ namespace RimWorldTranslationTool
 
         private void BrowseGameButton_Click(object sender, RoutedEventArgs e)
         {
-            _settingsController.HandleBrowseGamePath();
+            _settingsController?.HandleBrowseGamePath();
         }
         
         private void AutoDetectPaths_Click(object sender, RoutedEventArgs e)
         {
-            _ = _settingsController.HandleAutoDetectModsConfig();
+            if (_settingsController != null)
+            {
+                _ = _settingsController.HandleAutoDetectModsConfig();
+            }
         }
         
         private void SelectModsConfigButton_Click(object sender, RoutedEventArgs e)
         {
-            _settingsController.HandleSelectModsConfig();
+            _settingsController?.HandleSelectModsConfig();
         }
         
         private async void ManualSaveButton_Click(object sender, RoutedEventArgs e)
         {
-            await _settingsController.HandleManualSave();
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleManualSave();
+            }
         }
         
         // 新增的事件處理器
         private void AutoSaveCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            _settingsController.HandleAutoSaveChanged(true);
+            _settingsController?.HandleAutoSaveChanged(true);
         }
         
         private void AutoSaveCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            _settingsController.HandleAutoSaveChanged(false);
+            _settingsController?.HandleAutoSaveChanged(false);
         }
         
         private void CreateBackupButton_Click(object sender, RoutedEventArgs e)
@@ -447,17 +465,23 @@ namespace RimWorldTranslationTool
         
         private void ExportSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            _ = _settingsController.HandleExportSettings();
+            if (_settingsController != null)
+            {
+                _ = _settingsController.HandleExportSettings();
+            }
         }
         
         private void ImportSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            _ = _settingsController.HandleImportSettings();
+            if (_settingsController != null)
+            {
+                _ = _settingsController.HandleImportSettings();
+            }
         }
         
         private void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            _settingsController.HandleResetSettings();
+            _settingsController?.HandleResetSettings();
         }
 
         /// <summary>

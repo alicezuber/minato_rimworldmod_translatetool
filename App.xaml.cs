@@ -4,8 +4,6 @@ using System.Windows;
 using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Dialogs;
 using RimWorldTranslationTool.Services.ErrorHandling;
-using RimWorldTranslationTool.Services.CrashReporting;
-using RimWorldTranslationTool.Services.EmergencySave;
 
 namespace RimWorldTranslationTool
 {
@@ -14,8 +12,6 @@ namespace RimWorldTranslationTool
         private ILoggerService? _loggerService;
         private IDialogService? _dialogService;
         private IErrorHandler? _errorHandler;
-        private ICrashReportService? _crashReportService;
-        private IEmergencySaveService? _emergencySaveService;
         
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -81,19 +77,9 @@ namespace RimWorldTranslationTool
             try
             {
                 // 記錄嚴重錯誤
-                await _loggerService?.LogCriticalAsync("UI執行緒未處理異常", e.Exception, "GlobalException");
-                
-                // 生成崩潰報告
-                if (_crashReportService != null)
+                if (_loggerService != null)
                 {
-                    var report = await _crashReportService.GenerateCrashReportAsync(e.Exception, "UI Thread Exception");
-                    await _crashReportService.SaveCrashReportAsync(report);
-                }
-                
-                // 緊急儲存
-                if (_emergencySaveService != null)
-                {
-                    await _emergencySaveService.EmergencySaveAllAsync();
+                    await _loggerService.LogCriticalAsync("UI執行緒未處理異常", e.Exception, "GlobalException");
                 }
                 
                 // 顯示友善錯誤訊息
@@ -134,30 +120,23 @@ namespace RimWorldTranslationTool
             {
                 if (e.ExceptionObject is Exception ex)
                 {
-                    await _loggerService?.LogCriticalAsync("後台執行緒未處理異常", ex, "GlobalException");
-                    
-                    // 生成崩潰報告
-                    if (_crashReportService != null)
+                    if (_loggerService != null)
                     {
-                        var report = await _crashReportService.GenerateCrashReportAsync(ex, "Background Thread Exception");
-                        await _crashReportService.SaveCrashReportAsync(report);
-                    }
-                    
-                    // 緊急儲存
-                    if (_emergencySaveService != null)
-                    {
-                        await _emergencySaveService.EmergencySaveAllAsync();
+                        await _loggerService.LogCriticalAsync("後台執行緒未處理異常", ex, "GlobalException");
                     }
                     
                     // 如果是嚴重錯誤，準備關閉
                     if (e.IsTerminating)
                     {
-                        await _loggerService?.LogCriticalAsync("程式即將終止", null, "GlobalException");
+                        if (_loggerService != null)
+                        {
+                            await _loggerService.LogCriticalAsync("程式即將終止", null, "GlobalException");
+                        }
                         
                         if (_dialogService != null)
                         {
                             await _dialogService.ShowCriticalErrorAsync(
-                                "程式遇到致命錯誤，即將關閉。\n\n重要資料已緊急儲存。",
+                                "程式遇到致命錯誤，即將關閉。",
                                 ex,
                                 "致命錯誤");
                         }
@@ -172,11 +151,14 @@ namespace RimWorldTranslationTool
             }
         }
         
-        private async void OnUnobservedTaskException(object sender, System.Threading.Tasks.UnobservedTaskExceptionEventArgs e)
+        private async void OnUnobservedTaskException(object? sender, System.Threading.Tasks.UnobservedTaskExceptionEventArgs e)
         {
             try
             {
-                await _loggerService?.LogCriticalAsync("非同步任務未觀察到異常", e.Exception, "GlobalException");
+                if (_loggerService != null)
+                {
+                    await _loggerService.LogCriticalAsync("非同步任務未觀察到異常", e.Exception, "GlobalException");
+                }
                 
                 // 防止程式崩潰
                 e.SetObserved();
@@ -201,10 +183,16 @@ namespace RimWorldTranslationTool
             try
             {
                 // 記錄應用程式關閉
-                _loggerService?.LogInfoAsync($"應用程式關閉，退出代碼: {e.ApplicationExitCode}", "Application").Wait();
-                
-                // 清理資源
-                (_loggerService as IDisposable)?.Dispose();
+                if (_loggerService != null)
+                {
+                    _loggerService.LogInfoAsync($"應用程式關閉，退出代碼: {e.ApplicationExitCode}", "Application").Wait();
+                    
+                    // 清理資源
+                    if (_loggerService is IDisposable disposableLogger)
+                    {
+                        disposableLogger.Dispose();
+                    }
+                }
             }
             catch (Exception ex)
             {
