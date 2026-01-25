@@ -109,6 +109,7 @@ namespace RimWorldTranslationTool
         public string TabSettings => GetString("TabSettings");
         public string TabModBrowser => GetString("TabModBrowser");
         public string TabModManager => GetString("TabModManager");
+        public string TabLocalMods => GetString("TabLocalMods");
         
         // Settings Tab
         public string RimWorldPathSettings => GetString("RimWorldPathSettings");
@@ -137,6 +138,13 @@ namespace RimWorldTranslationTool
         public string ScanMods => GetString("ScanMods");
         public string ReadyToScan => GetString("ReadyToScan");
         public string PreparingScan => GetString("PreparingScan");
+        
+        // Local Mods Tab
+        public string ScanLocalMods => GetString("ScanLocalMods");
+        public string ReadyToScanLocalMods => GetString("ReadyToScanLocalMods");
+        public string PreparingLocalModsScan => GetString("PreparingLocalModsScan");
+        public string LocalModDetails => GetString("LocalModDetails");
+        public string SelectLocalModToViewDetails => GetString("SelectLocalModToViewDetails");
         
         // DataGrid Headers
         public string ColumnName => GetString("ColumnName");

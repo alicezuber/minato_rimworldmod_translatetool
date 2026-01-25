@@ -16,6 +16,28 @@ using System.Security;
 
 namespace RimWorldTranslationTool
 {
+    /// <summary>
+    /// 模組來源枚舉
+    /// </summary>
+    public enum ModSource
+    {
+        Unknown,
+        Local,      // 本地模組
+        Steam,      // Steam Workshop
+        Official    // 官方核心模組
+    }
+
+    /// <summary>
+    /// 模組依賴信息
+    /// </summary>
+    public class ModDependency
+    {
+        public string PackageId { get; set; } = "";
+        public string DisplayName { get; set; } = "";
+        public string SteamWorkshopUrl { get; set; } = "";
+        public string DownloadUrl { get; set; } = "";
+        public string TargetVersion { get; set; } = "";  // 用於 modDependenciesByVersion
+    }
     public class RelayCommand : ICommand
     {
         private readonly Action _execute;
@@ -55,6 +77,12 @@ namespace RimWorldTranslationTool
         private readonly Services.Settings.SettingsBackupService _backupService;
         private readonly Services.Paths.IPathService _pathService;
         
+        // 新的掃描服務
+        private readonly Services.Scanning.IModScannerService _modScannerService;
+        private readonly Services.Scanning.IModInfoService _modInfoService;
+        private readonly Services.Infrastructure.IXmlParserService _xmlParserService;
+        private readonly Services.Scanning.ITranslationMappingService _translationMappingService;
+        
         // 路徑屬性（用於 UI 綁定）
         private string _gamePath = "";
         
@@ -73,6 +101,13 @@ namespace RimWorldTranslationTool
             
             // 初始化路徑服務
             _pathService = new Services.Paths.PathService();
+            
+            // 初始化基礎設施服務
+            var loggerService = new Services.Logging.LoggerService();
+            _xmlParserService = new Services.Infrastructure.XmlParserService(loggerService);
+            _modInfoService = new Services.Scanning.ModInfoService(_xmlParserService, _pathService, loggerService);
+            _modScannerService = new Services.Scanning.ModScannerService(_modInfoService, _pathService, loggerService);
+            _translationMappingService = new Services.Scanning.TranslationMappingService(_pathService, loggerService);
             
             // 初始化設定服務
             _validationService = new Services.Settings.SettingsValidationService(_pathService);
@@ -1111,13 +1146,13 @@ namespace RimWorldTranslationTool
         /// <summary>
         /// 完成掃描後的處理
         /// </summary>
-        private void CompleteScan(List<ModInfo> modInfos)
+        private async void CompleteScan(List<ModInfo> modInfos)
         {
             // 一次性更新所有模組
             _mods.AddRange(modInfos);
             
-            // 建立翻譯補丁對應關係
-            BuildTranslationMappings();
+            // 建立翻譯補丁對應關係（使用新的服務）
+            await BuildTranslationMappingsAsync();
             
             ModsDataGrid.ItemsSource = _mods;
             StatusTextBlock.Text = $"找到 {_mods.Count} 個模組";
@@ -1221,27 +1256,15 @@ namespace RimWorldTranslationTool
                 _mods.Clear();
                 ModsDataGrid.ItemsSource = null;
 
-                // 收集所有需要掃描的目錄
-                var allDirectories = CollectModDirectories();
-                int total = allDirectories.Count;
-                int processed = 0;
-                
-                var modInfos = new List<ModInfo>();
-                
-                await Task.Run(() =>
+                // 使用新的掃描服務
+                var progress = new Progress<Services.Scanning.ScanProgress>(p =>
                 {
-                    foreach (var dir in allDirectories)
-                    {
-                        var modInfo = LoadModInfo(dir);
-                        if (modInfo != null)
-                        {
-                            modInfos.Add(modInfo);
-                        }
-                        
-                        processed++;
-                        UpdateScanProgress(processed, total);
-                    }
+                    ScanProgressBar.Value = p.PercentComplete;
+                    ProgressTextBlock.Text = $"掃描中... {p.Processed}/{p.Total}";
+                    StatusTextBlock.Text = $"正在掃描: {p.CurrentMod}";
                 });
+
+                var modInfos = await _modScannerService.ScanModsAsync(GamePath, progress);
 
                 // 完成掃描
                 CompleteScan(modInfos);
@@ -1269,27 +1292,15 @@ namespace RimWorldTranslationTool
                 _localMods.Clear();
                 LocalModsDataGrid.ItemsSource = null;
 
-                // 只收集本地 Mods 資料夾的目錄
-                var localDirectories = CollectLocalModDirectories();
-                int total = localDirectories.Count;
-                int processed = 0;
-                
-                var modInfos = new List<ModInfo>();
-                
-                await Task.Run(() =>
+                // 使用新的掃描服務
+                var progress = new Progress<Services.Scanning.ScanProgress>(p =>
                 {
-                    foreach (var dir in localDirectories)
-                    {
-                        var modInfo = LoadModInfo(dir);
-                        if (modInfo != null)
-                        {
-                            modInfos.Add(modInfo);
-                        }
-                        
-                        processed++;
-                        UpdateLocalModsScanProgress(processed, total);
-                    }
+                    LocalModsScanProgressBar.Value = p.PercentComplete;
+                    LocalModsProgressTextBlock.Text = $"掃描中... {p.Processed}/{p.Total}";
+                    LocalModsStatusTextBlock.Text = $"正在掃描: {p.CurrentMod}";
                 });
+
+                var modInfos = await _modScannerService.ScanLocalModsAsync(GamePath, progress);
 
                 // 完成掃描
                 CompleteLocalModsScan(modInfos);
@@ -1444,45 +1455,30 @@ namespace RimWorldTranslationTool
                 folderNameLower.Contains(keyword));
         }
         
-        private void BuildTranslationMappings()
+        /// <summary>
+        /// 建立翻譯補丁對應關係（使用新的服務）
+        /// </summary>
+        private async Task BuildTranslationMappingsAsync()
         {
-            // 1. 識別翻譯補丁模組
-            var translationMods = _mods.Where(m => IsTranslationMod(m)).ToList();
-            
-            // 2. 建立翻譯對應關係
-            _translationMappings.Clear();
-            
-            foreach (var transMod in translationMods)
+            try
             {
-                var targetMods = GetTargetModsForTranslation(transMod);
-                foreach (var targetMod in targetMods)
+                // 使用新的翻譯映射服務
+                _translationMappings = await _translationMappingService.BuildTranslationMappingsAsync(_mods);
+                
+                // 根據 ModsConfig.xml 排序
+                SortModsByConfig();
+                
+                // 更新預覽面板（如果有選中的模組）
+                if (SelectedMod != null)
                 {
-                    if (!_translationMappings.ContainsKey(targetMod.PackageId))
-                        _translationMappings[targetMod.PackageId] = new List<ModInfo>();
-                    _translationMappings[targetMod.PackageId].Add(transMod);
+                    UpdatePreviewPanel();
                 }
+                
+                Logger.Log($"翻譯映射建立完成，共 {_translationMappings.Count} 個目標模組有翻譯");
             }
-            
-            // 3. 更新所有模組的翻譯補丁狀態
-            foreach (var mod in _mods)
+            catch (Exception ex)
             {
-                if (_translationMappings.ContainsKey(mod.PackageId))
-                {
-                    mod.HasTranslationPatch = $"有({_translationMappings[mod.PackageId].Count})";
-                }
-                else
-                {
-                    mod.HasTranslationPatch = "無";
-                }
-            }
-            
-            // 4. 根據 ModsConfig.xml 排序
-            SortModsByConfig();
-            
-            // 5. 更新預覽面板（如果有選中的模組）
-            if (SelectedMod != null)
-            {
-                UpdatePreviewPanel();
+                Logger.LogError($"建立翻譯映射失敗", ex);
             }
         }
         
@@ -2722,11 +2718,34 @@ namespace RimWorldTranslationTool
         public string Author { get; set; } = "";
         public string PackageId { get; set; } = "";
         public string SupportedVersions { get; set; } = "";
+        public string SupportedLanguages { get; set; } = "unknown";  // 支援的語言
+        public bool IsVersionCompatible { get; set; } = true;
+        
+        // 新增：完整 About.xml 支援
+        public string Description { get; set; } = "";  // 模組描述（最重要）
+        public string Url { get; set; } = "";        // 模組官方網址
+        public string ModVersion { get; set; } = ""; // 模組版本
+        public List<ModDependency> ModDependencies { get; set; } = new List<ModDependency>();  // 模組依賴
+        public List<ModDependency> ModDependenciesByVersion { get; set; } = new List<ModDependency>();  // 版本特定依賴
+        public List<string> LoadAfter { get; set; } = new List<string>();  // 需要在這些模組之後載入
+        public List<string> IncompatibleWith { get; set; } = new List<string>();  // 不相容的模組
+        
+        // 新增：模組來源
+        public ModSource Source { get; set; } = ModSource.Unknown;
+        
+        // 新增：翻譯相關信息
+        public bool HasTranslationMod { get; set; } = false;  // 是否有翻譯模組
+        public string TranslationPatchLanguages { get; set; } = "none";  // 翻譯補丁支持的語言
+        
+        // 新增：翻譯關聯信息
+        public List<string> TargetModPackageIds { get; set; } = new List<string>();  // 此翻譯模組的目標模組
+        public List<string> TranslationPatchPackageIds { get; set; } = new List<string>();  // 翻譯此模組的補丁
+        
+        // 舊有屬性（保持相容性）
         public string HasChineseTraditional { get; set; } = "無";
         public string HasChineseSimplified { get; set; } = "無";
         public string HasTranslationPatch { get; set; } = "無";
         public string CanTranslate { get; set; } = "否";
-        public bool IsVersionCompatible { get; set; } = true;
         public bool IsEnabled { get; set; } = false;
         public bool IsTranslationPatch { get; set; } = false;
         
