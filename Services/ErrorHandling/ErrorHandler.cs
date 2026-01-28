@@ -4,28 +4,27 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using RimWorldTranslationTool.Services.Dialogs;
 using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Services.ErrorHandling
 {
     /// <summary>
-    /// 錯誤處理服務實現
+    /// 錯誤處理服務實現 (解藕 UI 依賴)
     /// </summary>
     public class ErrorHandler : IErrorHandler
     {
         private readonly ILoggerService _loggerService;
-        private readonly IDialogService _dialogService;
         private readonly ConcurrentDictionary<Type, Func<Exception, string, Task<bool>>> _recoveryStrategies;
         private readonly Dictionary<ErrorSeverity, Func<Exception, string, Task>> _defaultHandlers;
         private readonly ConcurrentQueue<ErrorInfo> _errorHistory;
         private readonly object _statsLock = new object();
         private ErrorStatistics _statistics;
+
+        public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
         
-        public ErrorHandler(ILoggerService loggerService, IDialogService dialogService)
+        public ErrorHandler(ILoggerService loggerService)
         {
             _loggerService = loggerService;
-            _dialogService = dialogService;
             _recoveryStrategies = new ConcurrentDictionary<Type, Func<Exception, string, Task<bool>>>();
             _defaultHandlers = new Dictionary<ErrorSeverity, Func<Exception, string, Task>>();
             _errorHistory = new ConcurrentQueue<ErrorInfo>();
@@ -52,7 +51,6 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
                 await _loggerService.LogOperationFailedAsync(operationName, ex, stopwatch.Elapsed);
                 await HandleExceptionAsync(ex, operationName, severity);
                 
-                // 根據嚴重程度決定是否重新拋出
                 if (severity >= ErrorSeverity.Critical)
                 {
                     throw;
@@ -108,25 +106,17 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
                 // 嘗試恢復
                 var recovered = await TryRecoverAsync(exception, context);
                 
-                // 使用預設處理器
+                // 觸發事件 (通知 UI 或 ECSManager)
+                ErrorOccurred?.Invoke(this, new ErrorOccurredEventArgs(exception, context, severity, recovered));
+
+                // 使用預設處理器 (自定義處理器)
                 if (_defaultHandlers.TryGetValue(severity, out var handler))
                 {
                     await handler(exception, context);
                 }
-                else
-                {
-                    await DefaultExceptionHandler(exception, context, severity);
-                }
-                
-                // 如果是致命錯誤且無法恢復，觸發應用程式關閉
-                if (severity == ErrorSeverity.Fatal && !recovered)
-                {
-                    await HandleFatalErrorAsync(exception, context);
-                }
             }
             catch (Exception handlerEx)
             {
-                // 錯誤處理器本身出錯，記錄到調試視窗
                 Debug.WriteLine($"錯誤處理器失敗: {handlerEx.Message}");
             }
         }
@@ -137,7 +127,6 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             {
                 var exceptionType = exception.GetType();
                 
-                // 尋找具體的恢復策略
                 if (_recoveryStrategies.TryGetValue(exceptionType, out var strategy))
                 {
                     var recovered = await strategy(exception, context);
@@ -149,7 +138,6 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
                     }
                 }
                 
-                // 尋找父類型的恢復策略
                 var baseType = exceptionType.BaseType;
                 while (baseType != null)
                 {
@@ -246,16 +234,14 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
                     .OrderByDescending(kvp => kvp.Value)
                     .FirstOrDefault().Key;
                 
-                // 記錄錯誤歷史
                 _errorHistory.Enqueue(new ErrorInfo
                 {
                     Exception = exception,
-                    Context = "",
+                    Context = context,
                     Severity = severity,
                     Timestamp = DateTime.Now
                 });
                 
-                // 保持歷史記錄在合理範圍內
                 while (_errorHistory.Count > 1000)
                 {
                     _errorHistory.TryDequeue(out _);
@@ -271,87 +257,33 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             }
         }
         
-        private async Task DefaultExceptionHandler(Exception exception, string context, ErrorSeverity severity)
-        {
-            switch (severity)
-            {
-                case ErrorSeverity.Info:
-                    // 資訊級別不顯示彈窗
-                    break;
-                    
-                case ErrorSeverity.Warning:
-                    await _dialogService.ShowWarningAsync($"{context}: {exception.Message}", "警告");
-                    break;
-                    
-                case ErrorSeverity.Error:
-                    await _dialogService.ShowErrorAsync($"{context}: {exception.Message}", exception, "錯誤");
-                    break;
-                    
-                case ErrorSeverity.Critical:
-                    await _dialogService.ShowCriticalErrorAsync($"{context}: {exception.Message}", exception, "嚴重錯誤");
-                    break;
-                    
-                case ErrorSeverity.Fatal:
-                    await _dialogService.ShowCriticalErrorAsync($"程式遇到致命錯誤: {context}\n{exception.Message}", exception, "致命錯誤");
-                    break;
-            }
-        }
-        
         private void SetupDefaultHandlers()
         {
+            // 預設不再這裡處理 UI，交由 ECSNotificationBridge
             SetDefaultErrorHandler(ErrorSeverity.Info, async (ex, context) => { });
-            SetDefaultErrorHandler(ErrorSeverity.Warning, async (ex, context) => 
-                await _dialogService.ShowWarningAsync($"{context}: {ex.Message}", "警告"));
-            SetDefaultErrorHandler(ErrorSeverity.Error, async (ex, context) => 
-                await _dialogService.ShowErrorAsync($"{context}: {ex.Message}", ex, "錯誤"));
-            SetDefaultErrorHandler(ErrorSeverity.Critical, async (ex, context) => 
-                await _dialogService.ShowCriticalErrorAsync($"{context}: {ex.Message}", ex, "嚴重錯誤"));
-            SetDefaultErrorHandler(ErrorSeverity.Fatal, async (ex, context) => 
-                await _dialogService.ShowCriticalErrorAsync($"程式遇到致命錯誤: {context}", ex, "致命錯誤"));
         }
         
         private void RegisterDefaultRecoveryStrategies()
         {
-            // 檔案存取錯誤恢復策略
             RegisterRecoveryStrategy<System.IO.IOException>(async (ex, context) =>
             {
                 if (ex.Message.Contains("被使用中") || ex.Message.Contains("being used"))
                 {
-                    await Task.Delay(1000); // 等待一秒後重試
+                    await Task.Delay(1000);
                     return true;
                 }
                 return false;
             });
             
-            // 網路錯誤恢復策略
             RegisterRecoveryStrategy<System.Net.WebException>(async (ex, context) =>
             {
                 if (ex.Status == System.Net.WebExceptionStatus.Timeout)
                 {
-                    // 嘗試增加超時時間重試
                     await Task.Delay(2000);
                     return true;
                 }
                 return false;
             });
-            
-            // 權限錯誤恢復策略
-            RegisterRecoveryStrategy<System.UnauthorizedAccessException>(async (ex, context) =>
-            {
-                await _dialogService.ShowWarningAsync("權限不足，請以管理員身份執行程式", "權限錯誤");
-                return false;
-            });
-        }
-        
-        private async Task HandleFatalErrorAsync(Exception exception, string context)
-        {
-            await _loggerService.LogCriticalAsync("程式即將關閉 - 致命錯誤", exception, "FatalError");
-            
-            // 這裡可以添加緊急儲存邏輯
-            // await _emergencySaveService.SaveCriticalDataAsync();
-            
-            // 關閉應用程式
-            System.Windows.Application.Current?.Shutdown(1);
         }
     }
     

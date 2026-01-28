@@ -9,6 +9,16 @@ namespace RimWorldTranslationTool.Services.EmergencySave
     public interface IEmergencySaveService
     {
         /// <summary>
+        /// 註冊可儲存組件
+        /// </summary>
+        void RegisterComponent(ISavableComponent component);
+
+        /// <summary>
+        /// 移除註冊組件
+        /// </summary>
+        void UnregisterComponent(string componentName);
+
+        /// <summary>
         /// 緊急儲存所有重要資料
         /// </summary>
         Task<bool> EmergencySaveAllAsync();

@@ -7,25 +7,36 @@ using System.Threading.Tasks;
 using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Paths;
 using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.EmergencySave;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
     /// <summary>
     /// 設定服務實現
     /// </summary>
-    public class SettingsService : ISettingsService
+    public class SettingsService : ISettingsService, ISavableComponent
     {
         private readonly SettingsManager _settingsManager;
         private readonly SettingsValidationService _validationService;
         private readonly IPathService _pathService;
         private readonly ILoggerService _loggerService;
+        private readonly IEmergencySaveService _emergencySaveService;
         
-        public SettingsService(SettingsValidationService validationService, IPathService pathService)
+        public string ComponentName => "Settings";
+
+        public SettingsService(
+            SettingsValidationService validationService, 
+            IPathService pathService,
+            IEmergencySaveService emergencySaveService)
         {
             _settingsManager = SettingsManager.Instance;
             _validationService = validationService;
             _pathService = pathService;
+            _emergencySaveService = emergencySaveService;
             _loggerService = new LoggerService();
+            
+            // 註冊到緊急儲存服務
+            _emergencySaveService.RegisterComponent(this);
             
             // 轉發事件
             _settingsManager.SettingsLoaded += (s, e) => SettingsLoaded?.Invoke(this, e);
@@ -40,6 +51,11 @@ namespace RimWorldTranslationTool.Services.Settings
         public async Task SaveSettingsAsync(AppSettings settings)
         {
             await _settingsManager.SaveSettingsAsync(settings);
+        }
+
+        public async Task SaveAsync()
+        {
+            await SaveSettingsAsync(GetCurrentSettings());
         }
         
         public void UpdateSetting(Action<AppSettings> updateAction)

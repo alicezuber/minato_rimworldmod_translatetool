@@ -99,11 +99,14 @@ namespace RimWorldTranslationTool
             InitializeComponent();
             DataContext = this;
             
-            // 初始化路徑服務
-            _pathService = new Services.Paths.PathService();
+            // 從 App 獲取全域服務
+            var app = (App)Application.Current;
+            _pathService = app.PathService ?? new Services.Paths.PathService();
+            var loggerService = app.LoggerService ?? new Services.Logging.LoggerService();
+            var dialogService = app.DialogService ?? new Services.Dialogs.DialogService();
+            var emergencySaveService = app.EmergencySaveService ?? new Services.EmergencySave.EmergencySaveService(_pathService, loggerService);
             
             // 初始化基礎設施服務
-            var loggerService = new Services.Logging.LoggerService();
             _xmlParserService = new Services.Infrastructure.XmlParserService(loggerService);
             _modInfoService = new Services.Scanning.ModInfoService(_xmlParserService, _pathService, loggerService);
             _modScannerService = new Services.Scanning.ModScannerService(_modInfoService, _pathService, loggerService);
@@ -112,7 +115,7 @@ namespace RimWorldTranslationTool
             // 初始化設定服務
             _validationService = new Services.Settings.SettingsValidationService(_pathService);
             _backupService = new Services.Settings.SettingsBackupService();
-            _settingsService = new Services.Settings.SettingsService(_validationService, _pathService);
+            _settingsService = new Services.Settings.SettingsService(_validationService, _pathService, emergencySaveService);
             _settingsController = new Controllers.SettingsController(_settingsService, _backupService, this);
             
             // 測試 i18n 功能

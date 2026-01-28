@@ -9,6 +9,11 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
     public interface IErrorHandler
     {
         /// <summary>
+        /// 當錯誤發生時觸發
+        /// </summary>
+        event EventHandler<ErrorOccurredEventArgs> ErrorOccurred;
+
+        /// <summary>
         /// 安全執行操作並返回結果
         /// </summary>
         Task<T> SafeExecuteAsync<T>(Func<Task<T>> operation, string operationName, ErrorSeverity severity = ErrorSeverity.Error);
@@ -119,5 +124,24 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
         Fallback,
         Reset,
         Restart
+    }
+
+    /// <summary>
+    /// 錯誤發生事件參數
+    /// </summary>
+    public class ErrorOccurredEventArgs : EventArgs
+    {
+        public Exception Exception { get; }
+        public string Context { get; }
+        public ErrorSeverity Severity { get; }
+        public bool Recovered { get; }
+
+        public ErrorOccurredEventArgs(Exception exception, string context, ErrorSeverity severity, bool recovered)
+        {
+            Exception = exception;
+            Context = context;
+            Severity = severity;
+            Recovered = recovered;
+        }
     }
 }

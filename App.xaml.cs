@@ -4,14 +4,31 @@ using System.Windows;
 using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Dialogs;
 using RimWorldTranslationTool.Services.ErrorHandling;
+using RimWorldTranslationTool.Services.Paths;
+using RimWorldTranslationTool.Services.CrashReporting;
+using RimWorldTranslationTool.Services.EmergencySave;
+using RimWorldTranslationTool.Services.ECS;
 
 namespace RimWorldTranslationTool
 {
     public partial class App : Application
     {
+        public ILoggerService? LoggerService => _loggerService;
+        public IDialogService? DialogService => _dialogService;
+        public IErrorHandler? ErrorHandler => _errorHandler;
+        public IPathService? PathService => _pathService;
+        public ICrashReportService? CrashReportService => _crashReportService;
+        public IEmergencySaveService? EmergencySaveService => _emergencySaveService;
+        public IECSManager? ECSManager => _ecsManager;
+
         private ILoggerService? _loggerService;
         private IDialogService? _dialogService;
         private IErrorHandler? _errorHandler;
+        private IPathService? _pathService;
+        private ICrashReportService? _crashReportService;
+        private IEmergencySaveService? _emergencySaveService;
+        private IECSManager? _ecsManager;
+        private ECSNotificationBridge? _notificationBridge;
         
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -30,7 +47,6 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                // 如果初始化失敗，顯示基本錯誤訊息
                 MessageBox.Show($"程式初始化失敗: {ex.Message}", "嚴重錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(1);
             }
@@ -40,140 +56,70 @@ namespace RimWorldTranslationTool
         {
             try
             {
-                // 初始化日誌服務
+                // 1. 基礎服務
+                _pathService = new PathService();
                 var logConfig = LogConfiguration.CreateDevelopment();
                 _loggerService = new LoggerService(logConfig);
-                
-                // 初始化彈窗服務
                 _dialogService = new DialogService();
                 
-                // 初始化錯誤處理服務
-                _errorHandler = new ErrorHandler(_loggerService!, _dialogService!);
+                // 2. ECS 組件
+                _errorHandler = new ErrorHandler(_loggerService);
+                _crashReportService = new CrashReportService(_pathService);
+                _emergencySaveService = new EmergencySaveService(_pathService, _loggerService);
                 
-                // 記錄應用程式啟動
-                _loggerService.LogInfoAsync("應用程式啟動", "Application").Wait();
+                // 3. ECS 管理器
+                _ecsManager = new ECSManager(_errorHandler, _crashReportService, _emergencySaveService, _loggerService);
+                
+                // 4. UI 橋接 (解藕 ErrorHandler 與 DialogService)
+                _notificationBridge = new ECSNotificationBridge(_errorHandler, _dialogService);
+
+                _loggerService.LogInfoAsync("應用程式服務初始化完成", "Application").Wait();
             }
             catch (Exception ex)
             {
-                // 如果服務初始化失敗，使用基本的錯誤處理
                 MessageBox.Show($"服務初始化失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         
         private void SetupGlobalExceptionHandling()
         {
-            // WPF UI 執行緒異常
             this.DispatcherUnhandledException += OnDispatcherUnhandledException;
-            
-            // AppDomain 異常
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-            
-            // TaskScheduler 異常
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
         }
         
         private async void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            try
+            if (_ecsManager != null)
             {
-                // 記錄嚴重錯誤
-                if (_loggerService != null)
-                {
-                    await _loggerService.LogCriticalAsync("UI執行緒未處理異常", e.Exception, "GlobalException");
-                }
-                
-                // 顯示友善錯誤訊息
-                if (_dialogService != null)
-                {
-                    await _dialogService.ShowCriticalErrorAsync(
-                        "程式發生未預期的錯誤，即將關閉。\n\n錯誤資訊已儲存，您可以重新啟動程式。",
-                        e.Exception,
-                        "嚴重錯誤");
-                }
-                else
-                {
-                    MessageBox.Show("程式發生未預期的錯誤，即將關閉。", "嚴重錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-                
-                // 防止程式崩潰
+                await _ecsManager.HandleGlobalExceptionAsync(e.Exception, "UI Thread");
                 e.Handled = true;
-                
-                // 優雅關閉
                 await GracefulShutdownAsync(1);
             }
-            catch (Exception handlerEx)
+            else
             {
-                // 如果錯誤處理器本身失敗，記錄到調試視窗
-                System.Diagnostics.Debug.WriteLine($"全域異常處理失敗: {handlerEx.Message}");
-                
-                // 最後的防線：基本錯誤訊息
-                MessageBox.Show("程式發生嚴重錯誤，即將關閉。", "致命錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
-                
-                e.Handled = true;
+                MessageBox.Show($"全域異常 (無 ECS): {e.Exception.Message}", "致命錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown(1);
             }
         }
         
         private async void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            try
+            if (e.ExceptionObject is Exception ex && _ecsManager != null)
             {
-                if (e.ExceptionObject is Exception ex)
+                await _ecsManager.HandleGlobalExceptionAsync(ex, "AppDomain");
+                if (e.IsTerminating)
                 {
-                    if (_loggerService != null)
-                    {
-                        await _loggerService.LogCriticalAsync("後台執行緒未處理異常", ex, "GlobalException");
-                    }
-                    
-                    // 如果是嚴重錯誤，準備關閉
-                    if (e.IsTerminating)
-                    {
-                        if (_loggerService != null)
-                        {
-                            await _loggerService.LogCriticalAsync("程式即將終止", null, "GlobalException");
-                        }
-                        
-                        if (_dialogService != null)
-                        {
-                            await _dialogService.ShowCriticalErrorAsync(
-                                "程式遇到致命錯誤，即將關閉。",
-                                ex,
-                                "致命錯誤");
-                        }
-                        
-                        await GracefulShutdownAsync(1);
-                    }
+                    await GracefulShutdownAsync(1);
                 }
-            }
-            catch (Exception handlerEx)
-            {
-                System.Diagnostics.Debug.WriteLine($"後台異常處理失敗: {handlerEx.Message}");
             }
         }
         
         private async void OnUnobservedTaskException(object? sender, System.Threading.Tasks.UnobservedTaskExceptionEventArgs e)
         {
-            try
+            if (_errorHandler != null)
             {
-                if (_loggerService != null)
-                {
-                    await _loggerService.LogCriticalAsync("非同步任務未觀察到異常", e.Exception, "GlobalException");
-                }
-                
-                // 防止程式崩潰
-                e.SetObserved();
-                
-                // 記錄錯誤但繼續執行
-                if (_dialogService != null)
-                {
-                    await _dialogService.ShowWarningAsync(
-                        "發生非同步任務錯誤，但程式會繼續執行。",
-                        "非同步錯誤");
-                }
-            }
-            catch (Exception handlerEx)
-            {
-                System.Diagnostics.Debug.WriteLine($"非同步異常處理失敗: {handlerEx.Message}");
+                await _errorHandler.HandleExceptionAsync(e.Exception, "TaskScheduler", ErrorSeverity.Warning);
                 e.SetObserved();
             }
         }
@@ -182,23 +128,16 @@ namespace RimWorldTranslationTool
         {
             try
             {
-                // 記錄應用程式關閉
                 if (_loggerService != null)
                 {
                     _loggerService.LogInfoAsync($"應用程式關閉，退出代碼: {e.ApplicationExitCode}", "Application").Wait();
-                    
-                    // 清理資源
-                    if (_loggerService is IDisposable disposableLogger)
-                    {
-                        disposableLogger.Dispose();
-                    }
+                    if (_loggerService is IDisposable disposableLogger) disposableLogger.Dispose();
                 }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"應用程式關閉時發生錯誤: {ex.Message}");
             }
-            
             base.OnExit(e);
         }
         
@@ -206,18 +145,11 @@ namespace RimWorldTranslationTool
         {
             try
             {
-                // 給一些時間完成清理
                 await Task.Delay(1000);
-                
-                // 關閉應用程式
-                Current.Dispatcher.Invoke(() =>
-                {
-                    Shutdown(exitCode);
-                });
+                Current.Dispatcher.Invoke(() => Shutdown(exitCode));
             }
-            catch (Exception ex)
+            catch
             {
-                System.Diagnostics.Debug.WriteLine($"優雅關閉失敗: {ex.Message}");
                 Shutdown(exitCode);
             }
         }
