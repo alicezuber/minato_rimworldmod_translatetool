@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool.Services.Infrastructure
 {

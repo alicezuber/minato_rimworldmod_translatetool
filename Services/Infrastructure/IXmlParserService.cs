@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Xml.Linq;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool.Services.Infrastructure
 {

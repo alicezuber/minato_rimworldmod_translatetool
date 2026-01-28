@@ -120,7 +120,7 @@ namespace RimWorldTranslationTool.Services.Settings
                 }
                 catch (Exception ex)
                 {
-                    await _loggerService.LogErrorAsync("獲取備份列表失敗", ex);
+                    _loggerService.LogErrorAsync("獲取備份列表失敗", ex).Wait();
                     return Array.Empty<SettingsBackupInfo>();
                 }
             });

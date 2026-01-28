@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool.Services.Settings
 {

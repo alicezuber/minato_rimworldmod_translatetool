@@ -355,5 +355,20 @@ namespace RimWorldTranslationTool.Services.Paths
                 return false;
             }
         }
+        
+        public string GetAppDataPath()
+        {
+            try
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var appPath = Path.Combine(localAppData, "RimWorldTranslationTool");
+                return appPath;
+            }
+            catch (Exception ex)
+            {
+                _ = _loggerService.LogErrorAsync("獲取 AppData 路徑失敗", ex);
+                return "";
+            }
+        }
     }
 }

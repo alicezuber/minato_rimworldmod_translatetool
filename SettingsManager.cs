@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool
 {
@@ -138,7 +139,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                await _loggerService.LogErrorAsync("觸發自動保存失敗", ex);
+                _ = _loggerService.LogErrorAsync("觸發自動保存失敗", ex);
             }
         }
 
@@ -171,18 +172,20 @@ namespace RimWorldTranslationTool
                     // 等待指定的延遲時間
                     await Task.Delay(delaySeconds * 1000);
                     
+                    string logMessage;
                     lock (_lockObject)
                     {
                         if (!_manualSaveMode)
                         {
                             _autoSaveEnabled = true;
-                            await _loggerService.LogInfoAsync($"自動保存已啟用（延遲 {delaySeconds} 秒）");
+                            logMessage = $"自動保存已啟用（延遲 {delaySeconds} 秒）";
                         }
                         else
                         {
-                            await _loggerService.LogInfoAsync("手動保存模式已啟用，不自動保存");
+                            logMessage = "手動保存模式已啟用，不自動保存";
                         }
                     }
+                    await _loggerService.LogInfoAsync(logMessage);
                 }
                 catch (Exception ex)
                 {

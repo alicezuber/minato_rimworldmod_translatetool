@@ -28,6 +28,7 @@ namespace RimWorldTranslationTool
             _pathService = pathService;
             
             _settingsController.SetViewModel(_viewModel);
+            _settingsController.SetMainWindow(this);
             
             DataContext = _viewModel;
             
@@ -127,6 +128,127 @@ namespace RimWorldTranslationTool
         private void HideHoverPreview()
         {
             // 隱藏懸停預覽邏輯...
+        }
+        
+        private async void AutoDetectPaths_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleAutoDetectModsConfig();
+            }
+        }
+        
+        private async void ManualSaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleManualSave();
+            }
+        }
+        
+        private void SelectModsConfigButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settingsController?.HandleSelectModsConfig();
+        }
+        
+        private void LanguageComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selected = (LanguageComboBox?.SelectedItem as string) ?? "";
+            if (!string.IsNullOrEmpty(selected))
+            {
+                LocalizationService.Instance.SetLanguage(selected);
+            }
+        }
+        
+        private void GameVersionComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+        }
+        
+        private void CreateBackupButton_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void RestoreBackupButton_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private async void ExportSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleExportSettings();
+            }
+        }
+        
+        private async void ImportSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleImportSettings();
+            }
+        }
+        
+        private void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            _settingsController?.HandleResetSettings();
+        }
+        
+        private void AutoSaveCheckBox_Checked(object sender, RoutedEventArgs e)
+        {
+            _settingsController?.HandleAutoSaveChanged(true);
+        }
+        
+        private void AutoSaveCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _settingsController?.HandleAutoSaveChanged(false);
+        }
+        
+        private void ModsDataGrid_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+        }
+        
+        private void LocalModsDataGrid_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+        {
+        }
+        
+        private void ScanLocalModsButton_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void MoveToEnabled_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void MoveToPool_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void RefreshModLists_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void DiagnoseModsConfig_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void SaveModsConfig_Click(object sender, RoutedEventArgs e)
+        {
+        }
+        
+        private void ModPoolListBox_Drop(object sender, DragEventArgs e)
+        {
+        }
+        
+        private void EnabledModsListBox_Drop(object sender, DragEventArgs e)
+        {
+        }
+        
+        private void ListBoxItem_MouseEnter(object sender, MouseEventArgs e)
+        {
+        }
+        
+        private void ListBoxItem_MouseLeave(object sender, MouseEventArgs e)
+        {
         }
     }
 }

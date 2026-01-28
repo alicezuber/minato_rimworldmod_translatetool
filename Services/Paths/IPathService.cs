@@ -80,6 +80,12 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="path">要檢查的路徑</param>
         /// <returns>是否存在且可存取</returns>
         bool PathExists(string path);
+        
+        /// <summary>
+        /// 取得應用程式的 LocalAppData 根路徑
+        /// </summary>
+        /// <returns>AppData 路徑</returns>
+        string GetAppDataPath();
     }
     
     /// <summary>

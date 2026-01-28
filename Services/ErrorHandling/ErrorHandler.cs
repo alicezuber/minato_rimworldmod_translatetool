@@ -101,7 +101,7 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
                 await LogErrorAsync(exception, context, severity);
                 
                 // 更新統計
-                UpdateStatistics(exception, severity);
+                UpdateStatistics(exception, severity, context);
                 
                 // 嘗試恢復
                 var recovered = await TryRecoverAsync(exception, context);
@@ -213,7 +213,7 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             }
         }
         
-        private void UpdateStatistics(Exception exception, ErrorSeverity severity)
+        private void UpdateStatistics(Exception exception, ErrorSeverity severity, string context)
         {
             lock (_statsLock)
             {
