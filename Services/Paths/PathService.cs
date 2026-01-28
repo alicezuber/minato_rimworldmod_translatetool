@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Services.Paths
 {
@@ -10,6 +13,12 @@ namespace RimWorldTranslationTool.Services.Paths
     /// </summary>
     public class PathService : IPathService
     {
+        private readonly ILoggerService _loggerService;
+        
+        public PathService()
+        {
+            _loggerService = new LoggerService();
+        }
         /// <summary>
         /// 根據遊戲本體路徑推導工作坊路徑
         /// </summary>
@@ -44,7 +53,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"推導工作坊路徑失敗: {gamePath}", ex);
+                _ = _loggerService.LogErrorAsync($"推導工作坊路徑失敗: {gamePath}", ex);
                 return "";
             }
         }
@@ -64,7 +73,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError("獲取設定路徑失敗", ex);
+                _ = _loggerService.LogErrorAsync("獲取設定路徑失敗", ex);
                 return "";
             }
         }
@@ -84,7 +93,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError("獲取 ModsConfig.xml 路徑失敗", ex);
+                _ = _loggerService.LogErrorAsync("獲取 ModsConfig.xml 路徑失敗", ex);
                 return "";
             }
         }
@@ -104,7 +113,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError("獲取存檔路徑失敗", ex);
+                _ = _loggerService.LogErrorAsync("獲取存檔路徑失敗", ex);
                 return "";
             }
         }
@@ -123,7 +132,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"獲取本地模組路徑失敗: {gamePath}", ex);
+                _ = _loggerService.LogErrorAsync($"獲取本地模組路徑失敗: {gamePath}", ex);
                 return "";
             }
         }
@@ -142,7 +151,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"獲取 Data 路徑失敗: {gamePath}", ex);
+                _ = _loggerService.LogErrorAsync($"獲取 Data 路徑失敗: {gamePath}", ex);
                 return "";
             }
         }
@@ -220,7 +229,7 @@ namespace RimWorldTranslationTool.Services.Paths
             {
                 result.Status = PathValidationStatus.Error;
                 result.Message = $"驗證路徑時發生錯誤: {ex.Message}";
-                Logger.LogError($"驗證遊戲路徑失敗: {path}", ex);
+                _ = _loggerService.LogErrorAsync($"驗證遊戲路徑失敗: {path}", ex);
             }
             
             return result;
@@ -284,7 +293,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError("獲取可能的遊戲路徑失敗", ex);
+                _ = _loggerService.LogErrorAsync("獲取可能的遊戲路徑失敗", ex);
             }
             
             return paths.Distinct().ToList();
@@ -304,7 +313,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"獲取模組 About.xml 路徑失敗: {modFolderPath}", ex);
+                _ = _loggerService.LogErrorAsync($"獲取模組 About.xml 路徑失敗: {modFolderPath}", ex);
                 return "";
             }
         }
@@ -323,7 +332,7 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"獲取模組 Languages 路徑失敗: {modFolderPath}", ex);
+                _ = _loggerService.LogErrorAsync($"獲取模組 Languages 路徑失敗: {modFolderPath}", ex);
                 return "";
             }
         }

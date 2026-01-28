@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Paths;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
@@ -17,12 +18,14 @@ namespace RimWorldTranslationTool.Services.Settings
         private readonly SettingsManager _settingsManager;
         private readonly SettingsValidationService _validationService;
         private readonly IPathService _pathService;
+        private readonly ILoggerService _loggerService;
         
         public SettingsService(SettingsValidationService validationService, IPathService pathService)
         {
             _settingsManager = SettingsManager.Instance;
             _validationService = validationService;
             _pathService = pathService;
+            _loggerService = new LoggerService();
             
             // 轉發事件
             _settingsManager.SettingsLoaded += (s, e) => SettingsLoaded?.Invoke(this, e);
@@ -75,7 +78,7 @@ namespace RimWorldTranslationTool.Services.Settings
             }
             catch (Exception ex)
             {
-                Logger.LogError("檢測 ModsConfig 失敗", ex);
+                await _loggerService.LogErrorAsync("檢測 ModsConfig 失敗", ex);
                 return false;
             }
         }

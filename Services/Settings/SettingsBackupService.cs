@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
@@ -12,10 +14,12 @@ namespace RimWorldTranslationTool.Services.Settings
     /// </summary>
     public class SettingsBackupService
     {
+        private readonly ILoggerService _loggerService;
         private readonly string _backupDirectory;
         
         public SettingsBackupService()
         {
+            _loggerService = new LoggerService();
             _backupDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "RimWorldTranslationTool", "Backups");
@@ -48,12 +52,12 @@ namespace RimWorldTranslationTool.Services.Settings
                 
                 await File.WriteAllTextAsync(filePath, json);
                 
-                Logger.Log($"設定備份已建立: {filePath}");
+                await _loggerService.LogInfoAsync($"設定備份已建立: {filePath}");
                 return filePath;
             }
             catch (Exception ex)
             {
-                Logger.LogError("建立設定備份失敗", ex);
+                await _loggerService.LogErrorAsync("建立設定備份失敗", ex);
                 throw;
             }
         }
@@ -78,12 +82,12 @@ namespace RimWorldTranslationTool.Services.Settings
                     throw new InvalidDataException("備份檔案格式無效");
                 }
                 
-                Logger.Log($"設定備份已還原: {backupFilePath}");
+                await _loggerService.LogInfoAsync($"設定備份已還原: {backupFilePath}");
                 return backupData.Settings;
             }
             catch (Exception ex)
             {
-                Logger.LogError("還原設定備份失敗", ex);
+                await _loggerService.LogErrorAsync("還原設定備份失敗", ex);
                 throw;
             }
         }
@@ -116,7 +120,7 @@ namespace RimWorldTranslationTool.Services.Settings
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("獲取備份列表失敗", ex);
+                    await _loggerService.LogErrorAsync("獲取備份列表失敗", ex);
                     return Array.Empty<SettingsBackupInfo>();
                 }
             });
@@ -132,14 +136,14 @@ namespace RimWorldTranslationTool.Services.Settings
                 if (File.Exists(backupFilePath))
                 {
                     await Task.Run(() => File.Delete(backupFilePath));
-                    Logger.Log($"備份檔案已刪除: {backupFilePath}");
+                    await _loggerService.LogInfoAsync($"備份檔案已刪除: {backupFilePath}");
                     return true;
                 }
                 return false;
             }
             catch (Exception ex)
             {
-                Logger.LogError($"刪除備份檔案失敗: {backupFilePath}", ex);
+                await _loggerService.LogErrorAsync($"刪除備份檔案失敗: {backupFilePath}", ex);
                 return false;
             }
         }

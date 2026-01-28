@@ -6,6 +6,7 @@ using System.Windows;
 using Microsoft.Win32;
 using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Controllers
 {
@@ -17,12 +18,14 @@ namespace RimWorldTranslationTool.Controllers
         private readonly ISettingsService _settingsService;
         private readonly SettingsBackupService _backupService;
         private readonly MainWindow _mainWindow;
+        private readonly ILoggerService _loggerService;
         
         public SettingsController(ISettingsService settingsService, SettingsBackupService backupService, MainWindow mainWindow)
         {
             _settingsService = settingsService;
             _backupService = backupService;
             _mainWindow = mainWindow;
+            _loggerService = new LoggerService();
             
             // 訂閱事件
             _settingsService.SettingsLoaded += OnSettingsLoaded;
@@ -40,7 +43,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("初始化設定失敗", ex);
+                await _loggerService.LogErrorAsync("初始化設定失敗", ex);
                 MessageBox.Show($"載入設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -66,7 +69,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("處理遊戲路徑變更失敗", ex);
+                await _loggerService.LogErrorAsync("處理遊戲路徑變更失敗", ex);
             }
         }
         
@@ -93,7 +96,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("瀏覽遊戲路徑失敗", ex);
+                await _loggerService.LogErrorAsync("瀏覽遊戲路徑失敗", ex);
                 MessageBox.Show($"瀏覽失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -123,7 +126,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("自動檢測 ModsConfig 失敗", ex);
+                await _loggerService.LogErrorAsync("自動檢測 ModsConfig 失敗", ex);
                 MessageBox.Show($"檢測失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -156,7 +159,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("選擇 ModsConfig 檔案失敗", ex);
+                await _loggerService.LogErrorAsync("選擇 ModsConfig 檔案失敗", ex);
                 MessageBox.Show($"選擇檔案失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -173,7 +176,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("手動儲存失敗", ex);
+                await _loggerService.LogErrorAsync("手動儲存失敗", ex);
                 MessageBox.Show($"手動儲存失敗: {ex.Message}", "儲存失敗", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -189,7 +192,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("設定自動儲存失敗", ex);
+                await _loggerService.LogErrorAsync("設定自動儲存失敗", ex);
             }
         }
         
@@ -226,7 +229,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("匯出設定失敗", ex);
+                await _loggerService.LogErrorAsync("匯出設定失敗", ex);
                 MessageBox.Show($"匯出設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -268,7 +271,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("匯入設定失敗", ex);
+                await _loggerService.LogErrorAsync("匯入設定失敗", ex);
                 MessageBox.Show($"匯入設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
@@ -304,7 +307,7 @@ namespace RimWorldTranslationTool.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("重設設定失敗", ex);
+                    await _loggerService.LogErrorAsync("重設設定失敗", ex);
                     MessageBox.Show($"重設設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
@@ -357,7 +360,7 @@ namespace RimWorldTranslationTool.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError("更新遊戲路徑驗證 UI 失敗", ex);
+                await _loggerService.LogErrorAsync("更新遊戲路徑驗證 UI 失敗", ex);
             }
         }
         
@@ -387,7 +390,7 @@ namespace RimWorldTranslationTool.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("更新 UI 失敗", ex);
+                    await _loggerService.LogErrorAsync("更新 UI 失敗", ex);
                 }
             });
         }
@@ -405,7 +408,7 @@ namespace RimWorldTranslationTool.Controllers
         /// </summary>
         private void OnSettingsSaved(object? sender, SettingsSavedEventArgs e)
         {
-            Logger.Log("設定保存完成");
+            _ = _loggerService.LogInfoAsync("設定保存完成");
         }
     }
 }

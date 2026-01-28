@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool
 {
@@ -20,6 +21,7 @@ namespace RimWorldTranslationTool
         private bool _autoSaveEnabled = false;  // 自動保存開關
         private bool _manualSaveMode = false;   // 手動保存模式
         private readonly object _lockObject = new object();
+        private readonly ILoggerService _loggerService;
 
         // 設定檔案路徑
         private static string SettingsFilePath => Path.Combine(
@@ -41,7 +43,10 @@ namespace RimWorldTranslationTool
         // 事件：設定保存完成
         public event EventHandler<SettingsSavedEventArgs>? SettingsSaved;
 
-        private SettingsManager() { }
+        private SettingsManager() 
+        { 
+            _loggerService = new Services.Logging.LoggerService();
+        }
 
         /// <summary>
         /// 載入設定
@@ -67,17 +72,17 @@ namespace RimWorldTranslationTool
 
                 if (File.Exists(SettingsFilePath))
                 {
-                    Logger.Log($"開始載入設定檔案: {SettingsFilePath}");
+                    await _loggerService.LogInfoAsync($"開始載入設定檔案: {SettingsFilePath}");
                     
                     var json = await File.ReadAllTextAsync(SettingsFilePath);
                     var loadedSettings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
                     
                     _currentSettings = loadedSettings;
-                    Logger.Log($"設定載入成功 - GamePath: {_currentSettings.GamePath}, Version: {_currentSettings.GameVersion}");
+                    await _loggerService.LogInfoAsync($"設定載入成功 - GamePath: {_currentSettings.GamePath}, Version: {_currentSettings.GameVersion}");
                 }
                 else
                 {
-                    Logger.Log($"設定檔案不存在，使用預設值: {SettingsFilePath}");
+                    await _loggerService.LogInfoAsync($"設定檔案不存在，使用預設值: {SettingsFilePath}");
                     _currentSettings = new AppSettings();
                 }
 
@@ -88,7 +93,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                Logger.LogError($"載入設定失敗，檔案路徑: {SettingsFilePath}", ex);
+                await _loggerService.LogErrorAsync($"載入設定失敗，檔案路徑: {SettingsFilePath}", ex);
                 _currentSettings = new AppSettings();
                 return _currentSettings;
             }
@@ -133,7 +138,7 @@ namespace RimWorldTranslationTool
             }
             catch (Exception ex)
             {
-                Logger.LogError("觸發自動保存失敗", ex);
+                await _loggerService.LogErrorAsync("觸發自動保存失敗", ex);
             }
         }
 
@@ -145,11 +150,11 @@ namespace RimWorldTranslationTool
             try
             {
                 await SaveSettingsAsync();
-                Logger.Log("手動保存完成");
+                await _loggerService.LogInfoAsync("手動保存完成");
             }
             catch (Exception ex)
             {
-                Logger.LogError("手動保存失敗", ex);
+                await _loggerService.LogErrorAsync("手動保存失敗", ex);
                 throw;
             }
         }
@@ -171,17 +176,17 @@ namespace RimWorldTranslationTool
                         if (!_manualSaveMode)
                         {
                             _autoSaveEnabled = true;
-                            Logger.Log($"自動保存已啟用（延遲 {delaySeconds} 秒）");
+                            await _loggerService.LogInfoAsync($"自動保存已啟用（延遲 {delaySeconds} 秒）");
                         }
                         else
                         {
-                            Logger.Log("手動保存模式已啟用，不自動保存");
+                            await _loggerService.LogInfoAsync("手動保存模式已啟用，不自動保存");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("啟用自動保存失敗", ex);
+                    await _loggerService.LogErrorAsync("啟用自動保存失敗", ex);
                 }
             });
         }
@@ -191,13 +196,16 @@ namespace RimWorldTranslationTool
         /// </summary>
         public void EnableManualSaveMode()
         {
-            lock (_lockObject)
+            _ = Task.Run(async () =>
             {
-                _manualSaveMode = true;
-                _autoSaveEnabled = false;
-                _saveCts?.Cancel();
-                Logger.Log("手動保存模式已啟用 - 只允許手動保存");
-            }
+                lock (_lockObject)
+                {
+                    _manualSaveMode = true;
+                    _autoSaveEnabled = false;
+                    _saveCts?.Cancel();
+                }
+                await _loggerService.LogInfoAsync("手動保存模式已啟用 - 只允許手動保存");
+            });
         }
 
         /// <summary>
@@ -205,12 +213,15 @@ namespace RimWorldTranslationTool
         /// </summary>
         public void DisableAutoSave()
         {
-            lock (_lockObject)
+            _ = Task.Run(async () =>
             {
-                _autoSaveEnabled = false;
-                _saveCts?.Cancel();
-                Logger.Log("自動保存已禁用");
-            }
+                lock (_lockObject)
+                {
+                    _autoSaveEnabled = false;
+                    _saveCts?.Cancel();
+                }
+                await _loggerService.LogInfoAsync("自動保存已禁用");
+            });
         }
 
         /// <summary>
@@ -245,14 +256,14 @@ namespace RimWorldTranslationTool
                 var json = JsonSerializer.Serialize(settingsToSave, JsonOptions);
                 await File.WriteAllTextAsync(SettingsFilePath, json);
 
-                Logger.Log($"設定已儲存到: {SettingsFilePath}");
+                await _loggerService.LogInfoAsync($"設定已儲存到: {SettingsFilePath}");
                 
                 // 觸發保存完成事件
                 SettingsSaved?.Invoke(this, new SettingsSavedEventArgs(settingsToSave));
             }
             catch (Exception ex)
             {
-                Logger.LogError($"儲存設定失敗，檔案路徑: {SettingsFilePath}", ex);
+                await _loggerService.LogErrorAsync($"儲存設定失敗，檔案路徑: {SettingsFilePath}", ex);
                 throw;
             }
         }
