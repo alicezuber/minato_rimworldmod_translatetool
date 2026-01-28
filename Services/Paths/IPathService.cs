@@ -82,10 +82,35 @@ namespace RimWorldTranslationTool.Services.Paths
         bool PathExists(string path);
         
         /// <summary>
-        /// 取得應用程式的 LocalAppData 根路徑
+        /// 確保目錄存在，如果不存在則建立
         /// </summary>
-        /// <returns>AppData 路徑</returns>
+        /// <param name="directoryPath">目錄路徑</param>
+        /// <returns>是否成功建立或已存在</returns>
+        bool EnsureDirectoryExists(string directoryPath);
+        
+        /// <summary>
+        /// 獲取應用程式資料路徑
+        /// </summary>
+        /// <returns>應用程式資料路徑</returns>
         string GetAppDataPath();
+
+        /// <summary>
+        /// 獲取備份目錄路徑
+        /// </summary>
+        /// <returns>備份目錄路徑</returns>
+        string GetBackupDirectory();
+
+        /// <summary>
+        /// 獲取設定檔案路徑
+        /// </summary>
+        /// <returns>設定檔案路徑</returns>
+        string GetSettingsFilePath();
+        
+        /// <summary>
+        /// 獲取日誌目錄路徑
+        /// </summary>
+        /// <returns>日誌目錄路徑</returns>
+        string GetLogsDirectory();
     }
     
     /// <summary>

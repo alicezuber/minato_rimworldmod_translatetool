@@ -323,7 +323,7 @@ namespace RimWorldTranslationTool.Services.Logging
         {
             try
             {
-                if (!Directory.Exists(_config.LogDirectory))
+                if (!string.IsNullOrEmpty(_config.LogDirectory) && !Directory.Exists(_config.LogDirectory))
                 {
                     Directory.CreateDirectory(_config.LogDirectory);
                 }

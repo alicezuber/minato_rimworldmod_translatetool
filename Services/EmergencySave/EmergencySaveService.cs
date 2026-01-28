@@ -25,10 +25,7 @@ namespace RimWorldTranslationTool.Services.EmergencySave
             _pathService = pathService;
             _loggerService = loggerService;
             
-            if (!Directory.Exists(EmergencySaveDirectory))
-            {
-                Directory.CreateDirectory(EmergencySaveDirectory);
-            }
+            _pathService.EnsureDirectoryExists(EmergencySaveDirectory);
         }
 
         public string EmergencySaveDirectory => Path.Combine(_pathService.GetAppDataPath(), "EmergencySaves");

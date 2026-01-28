@@ -5,27 +5,30 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Infrastructure;
 using RimWorldTranslationTool.Services.Logging;
+
+using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
     /// <summary>
-    /// 設定備份服務
+    /// 設定備份服務 (透過 DI 注入)
     /// </summary>
     public class SettingsBackupService
     {
         private readonly ILoggerService _loggerService;
+        private readonly IPathService _pathService;
         private readonly string _backupDirectory;
         
-        public SettingsBackupService()
+        public SettingsBackupService(ILoggerService loggerService, IPathService pathService)
         {
-            _loggerService = new LoggerService();
-            _backupDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "RimWorldTranslationTool", "Backups");
+            _loggerService = loggerService;
+            _pathService = pathService;
+            _backupDirectory = _pathService.GetBackupDirectory();
             
             // 確保備份目錄存在
-            Directory.CreateDirectory(_backupDirectory);
+            _pathService.EnsureDirectoryExists(_backupDirectory);
         }
         
         /// <summary>
@@ -45,10 +48,7 @@ namespace RimWorldTranslationTool.Services.Settings
                     Settings = settings
                 };
                 
-                var json = JsonSerializer.Serialize(backupData, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
-                });
+                var json = JsonSerializer.Serialize(backupData, JsonConfiguration.DefaultOptions);
                 
                 await File.WriteAllTextAsync(filePath, json);
                 

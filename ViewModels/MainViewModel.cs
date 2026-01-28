@@ -24,7 +24,19 @@ namespace RimWorldTranslationTool.ViewModels
         private ModViewModel? _selectedMod;
         private string _statusText = "準備就緒";
         private double _scanProgress = 0;
-        
+
+        // 設定相關屬性
+        private string _modsConfigPath = "";
+        private string _modsConfigStatus = "未檢測";
+        private System.Windows.Media.Brush _modsConfigStatusColor = System.Windows.Media.Brushes.Gray;
+        private string _gamePathValidationMessage = "";
+        private System.Windows.Media.Brush _gamePathValidationColor = System.Windows.Media.Brushes.Gray;
+        private string _gamePathValidationIcon = "";
+        private bool _isGamePathValid = false;
+        private string _selectedLanguage = "zh-TW";
+        private string _selectedGameVersion = "1.5";
+        private bool _isAutoSaveEnabled = false;
+
         public MainViewModel(
             IModScannerService modScannerService,
             IPathService pathService,
@@ -47,13 +59,67 @@ namespace RimWorldTranslationTool.ViewModels
         public string GamePath
         {
             get => _gamePath;
-            set
-            {
-                if (SetProperty(ref _gamePath, value))
-                {
-                    // 當路徑改變時，自動更新狀態
-                }
-            }
+            set => SetProperty(ref _gamePath, value);
+        }
+
+        public string ModsConfigPath
+        {
+            get => _modsConfigPath;
+            set => SetProperty(ref _modsConfigPath, value);
+        }
+
+        public string ModsConfigStatus
+        {
+            get => _modsConfigStatus;
+            set => SetProperty(ref _modsConfigStatus, value);
+        }
+
+        public System.Windows.Media.Brush ModsConfigStatusColor
+        {
+            get => _modsConfigStatusColor;
+            set => SetProperty(ref _modsConfigStatusColor, value);
+        }
+
+        public string GamePathValidationMessage
+        {
+            get => _gamePathValidationMessage;
+            set => SetProperty(ref _gamePathValidationMessage, value);
+        }
+
+        public System.Windows.Media.Brush GamePathValidationColor
+        {
+            get => _gamePathValidationColor;
+            set => SetProperty(ref _gamePathValidationColor, value);
+        }
+
+        public string GamePathValidationIcon
+        {
+            get => _gamePathValidationIcon;
+            set => SetProperty(ref _gamePathValidationIcon, value);
+        }
+
+        public bool IsGamePathValid
+        {
+            get => _isGamePathValid;
+            set => SetProperty(ref _isGamePathValid, value);
+        }
+
+        public string SelectedLanguage
+        {
+            get => _selectedLanguage;
+            set => SetProperty(ref _selectedLanguage, value);
+        }
+
+        public string SelectedGameVersion
+        {
+            get => _selectedGameVersion;
+            set => SetProperty(ref _selectedGameVersion, value);
+        }
+
+        public bool IsAutoSaveEnabled
+        {
+            get => _isAutoSaveEnabled;
+            set => SetProperty(ref _isAutoSaveEnabled, value);
         }
 
         public bool IsScanning

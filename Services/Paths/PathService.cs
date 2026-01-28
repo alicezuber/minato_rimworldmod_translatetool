@@ -15,9 +15,9 @@ namespace RimWorldTranslationTool.Services.Paths
     {
         private readonly ILoggerService _loggerService;
         
-        public PathService()
+        public PathService(ILoggerService loggerService)
         {
-            _loggerService = new LoggerService();
+            _loggerService = loggerService;
         }
         /// <summary>
         /// 根據遊戲本體路徑推導工作坊路徑
@@ -351,7 +351,31 @@ namespace RimWorldTranslationTool.Services.Paths
             }
             catch (Exception ex)
             {
-                Logger.LogError($"檢查路徑存在性失敗: {path}", ex);
+                _ = _loggerService.LogErrorAsync($"檢查路徑存在性失敗: {path}", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 確保目錄存在，如果不存在則建立
+        /// </summary>
+        public bool EnsureDirectoryExists(string directoryPath)
+        {
+            if (string.IsNullOrEmpty(directoryPath))
+                return false;
+
+            try
+            {
+                if (!Directory.Exists(directoryPath))
+                {
+                    Directory.CreateDirectory(directoryPath);
+                    _ = _loggerService.LogInfoAsync($"已建立目錄: {directoryPath}");
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _ = _loggerService.LogErrorAsync($"建立目錄失敗: {directoryPath}", ex);
                 return false;
             }
         }
@@ -360,15 +384,29 @@ namespace RimWorldTranslationTool.Services.Paths
         {
             try
             {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var appPath = Path.Combine(localAppData, "RimWorldTranslationTool");
-                return appPath;
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                return Path.Combine(appData, "RimWorldTranslationTool");
             }
             catch (Exception ex)
             {
                 _ = _loggerService.LogErrorAsync("獲取 AppData 路徑失敗", ex);
                 return "";
             }
+        }
+
+        public string GetBackupDirectory()
+        {
+            return Path.Combine(GetAppDataPath(), "Backups");
+        }
+
+        public string GetSettingsFilePath()
+        {
+            return Path.Combine(GetAppDataPath(), "RimWorldTranslationTool_Settings.json");
+        }
+        
+        public string GetLogsDirectory()
+        {
+            return Path.Combine(GetAppDataPath(), "Logs");
         }
     }
 }

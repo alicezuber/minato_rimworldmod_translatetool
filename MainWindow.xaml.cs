@@ -28,7 +28,6 @@ namespace RimWorldTranslationTool
             _pathService = pathService;
             
             _settingsController.SetViewModel(_viewModel);
-            _settingsController.SetMainWindow(this);
             
             DataContext = _viewModel;
             
@@ -188,9 +187,12 @@ namespace RimWorldTranslationTool
             }
         }
         
-        private void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
+        private async void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            _settingsController?.HandleResetSettings();
+            if (_settingsController != null)
+            {
+                await _settingsController.HandleResetSettings();
+            }
         }
         
         private void AutoSaveCheckBox_Checked(object sender, RoutedEventArgs e)

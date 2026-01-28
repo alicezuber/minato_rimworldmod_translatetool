@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Services.Infrastructure;
 using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.CrashReporting
@@ -16,17 +17,13 @@ namespace RimWorldTranslationTool.Services.CrashReporting
     public class CrashReportService : ICrashReportService
     {
         private readonly IPathService _pathService;
-        private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
         public CrashReportService(IPathService pathService)
         {
             _pathService = pathService;
             
             // 確保目錄存在
-            if (!Directory.Exists(CrashReportDirectory))
-            {
-                Directory.CreateDirectory(CrashReportDirectory);
-            }
+            _pathService.EnsureDirectoryExists(CrashReportDirectory);
         }
 
         public bool IsAutoSendEnabled { get; set; } = false;
@@ -70,7 +67,7 @@ namespace RimWorldTranslationTool.Services.CrashReporting
                 report.UserActionInfo
             };
 
-            string json = JsonSerializer.Serialize(reportData, JsonOptions);
+            string json = JsonSerializer.Serialize(reportData, JsonConfiguration.DefaultOptions);
             await File.WriteAllTextAsync(filePath, json);
         }
 

@@ -2,32 +2,39 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
 using Microsoft.Win32;
 using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Logging;
-
+using RimWorldTranslationTool.Services.Dialogs;
 using RimWorldTranslationTool.ViewModels;
 
 namespace RimWorldTranslationTool.Controllers
 {
     /// <summary>
-    /// 設定頁控制器 - 處理設定相關的 UI 邏輯
+    /// 設定頁控制器 - 處理設定相關的 UI 邏輯 (透過 ViewModel 與 DialogService)
     /// </summary>
     public class SettingsController
     {
         private readonly ISettingsService _settingsService;
         private readonly SettingsBackupService _backupService;
         private readonly ILoggerService _loggerService;
+        private readonly RimWorldTranslationTool.Services.Paths.IPathService _pathService;
+        private readonly IDialogService _dialogService;
         private MainViewModel? _viewModel;
-        private MainWindow? _mainWindow;
         
-        public SettingsController(ISettingsService settingsService, SettingsBackupService backupService)
+        public SettingsController(
+            ISettingsService settingsService, 
+            SettingsBackupService backupService,
+            ILoggerService loggerService,
+            IDialogService dialogService,
+            RimWorldTranslationTool.Services.Paths.IPathService pathService)
         {
             _settingsService = settingsService;
             _backupService = backupService;
-            _loggerService = new LoggerService();
+            _loggerService = loggerService;
+            _dialogService = dialogService;
+            _pathService = pathService;
             
             // 訂閱事件
             _settingsService.SettingsLoaded += OnSettingsLoaded;
@@ -35,13 +42,7 @@ namespace RimWorldTranslationTool.Controllers
         }
 
         public void SetViewModel(MainViewModel viewModel)
-        {
-            _viewModel = viewModel;
-        }
-        
-        public void SetMainWindow(MainWindow mainWindow)
-        {
-            _mainWindow = mainWindow;
+        {            _viewModel = viewModel;
         }
         
         public string GetCurrentGamePath() => _settingsService.GetCurrentSettings().GamePath;
@@ -58,7 +59,7 @@ namespace RimWorldTranslationTool.Controllers
             catch (Exception ex)
             {
                 await _loggerService.LogErrorAsync("初始化設定失敗", ex);
-                MessageBox.Show($"載入設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dialogService.ShowErrorAsync($"載入設定失敗: {ex.Message}");
             }
         }
         
@@ -72,7 +73,7 @@ namespace RimWorldTranslationTool.Controllers
                 // 驗證路徑
                 var validation = await _settingsService.ValidateGamePathAsync(newPath);
                 
-                // 更新 UI 狀態
+                // 更新 ViewModel 狀態
                 UpdateGamePathValidation(validation);
                 
                 // 保存設定
@@ -114,7 +115,7 @@ namespace RimWorldTranslationTool.Controllers
             catch (Exception ex)
             {
                 _ = _loggerService.LogErrorAsync("瀏覽遊戲路徑失敗", ex);
-                MessageBox.Show($"瀏覽失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                _ = _dialogService.ShowErrorAsync($"瀏覽失敗: {ex.Message}");
             }
         }
         
@@ -130,21 +131,24 @@ namespace RimWorldTranslationTool.Controllers
                 if (detected)
                 {
                     var settings = _settingsService.GetCurrentSettings();
-                    _mainWindow.ModsConfigPathText.Text = Path.GetFileName(settings.ModsConfigPath);
-                    _mainWindow.ModsConfigStatusText.Text = "已檢測";
-                    _mainWindow.ModsConfigStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
+                    if (_viewModel != null)
+                    {
+                        _viewModel.ModsConfigPath = Path.GetFileName(settings.ModsConfigPath);
+                        _viewModel.ModsConfigStatus = "已檢測";
+                        _viewModel.ModsConfigStatusColor = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
+                    }
                     
-                    MessageBox.Show("已自動檢測到 ModsConfig.xml", "檢測成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await _dialogService.ShowSuccessAsync("已自動檢測到 ModsConfig.xml");
                 }
                 else
                 {
-                    MessageBox.Show("無法檢測到 ModsConfig.xml，請手動選擇檔案", "檢測失敗", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    await _dialogService.ShowWarningAsync("無法檢測到 ModsConfig.xml，請手動選擇檔案");
                 }
             }
             catch (Exception ex)
             {
                 await _loggerService.LogErrorAsync("自動檢測 ModsConfig 失敗", ex);
-                MessageBox.Show($"檢測失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dialogService.ShowErrorAsync($"檢測失敗: {ex.Message}");
             }
         }
         
@@ -164,20 +168,21 @@ namespace RimWorldTranslationTool.Controllers
                 
                 if (dialog.ShowDialog() == true)
                 {
-                    var settings = _settingsService.GetCurrentSettings();
                     _settingsService.UpdateSetting(s => s.ModsConfigPath = dialog.FileName);
                     
-                    // 更新 UI
-                    _mainWindow.ModsConfigPathText.Text = Path.GetFileName(dialog.FileName);
-                    _mainWindow.ModsConfigPathSubText.Text = dialog.FileName;
-                    _mainWindow.ModsConfigStatusText.Text = "已選擇";
-                    _mainWindow.ModsConfigStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
+                    // 更新 ViewModel
+                    if (_viewModel != null)
+                    {
+                        _viewModel.ModsConfigPath = Path.GetFileName(dialog.FileName);
+                        _viewModel.ModsConfigStatus = "已選擇";
+                        _viewModel.ModsConfigStatusColor = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
+                    }
                 }
             }
             catch (Exception ex)
             {
                 _ = _loggerService.LogErrorAsync("選擇 ModsConfig 檔案失敗", ex);
-                MessageBox.Show($"選擇檔案失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                _ = _dialogService.ShowErrorAsync($"選擇檔案失敗: {ex.Message}");
             }
         }
         
@@ -189,12 +194,12 @@ namespace RimWorldTranslationTool.Controllers
             try
             {
                 await _settingsService.SaveSettingsAsync(_settingsService.GetCurrentSettings());
-                MessageBox.Show("設定已手動儲存", "儲存成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                await _dialogService.ShowSuccessAsync("設定已手動儲存");
             }
             catch (Exception ex)
             {
                 await _loggerService.LogErrorAsync("手動儲存失敗", ex);
-                MessageBox.Show($"手動儲存失敗: {ex.Message}", "儲存失敗", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dialogService.ShowErrorAsync($"手動儲存失敗: {ex.Message}");
             }
         }
         
@@ -232,22 +237,19 @@ namespace RimWorldTranslationTool.Controllers
                     var settings = _settingsService.GetCurrentSettings();
                     await _settingsService.SaveSettingsAsync(settings);
                     
-                    // 複製到匯出位置
-                    var sourceFile = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "RimWorldTranslationTool", "RimWorldTranslationTool_Settings.json");
+                    var sourceFile = _pathService.GetSettingsFilePath();
                     
                     if (File.Exists(sourceFile))
                     {
                         File.Copy(sourceFile, dialog.FileName, true);
-                        MessageBox.Show("設定已匯出", "匯出成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await _dialogService.ShowSuccessAsync("設定已匯出");
                     }
                 }
             }
             catch (Exception ex)
             {
                 await _loggerService.LogErrorAsync("匯出設定失敗", ex);
-                MessageBox.Show($"匯出設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dialogService.ShowErrorAsync($"匯出設定失敗: {ex.Message}");
             }
         }
         
@@ -279,32 +281,25 @@ namespace RimWorldTranslationTool.Controllers
                             s.ModsConfigPath = settings.ModsConfigPath;
                         });
                         
-                        // 更新 UI
-                        await UpdateUIFromSettings(settings);
-                        
-                        MessageBox.Show("設定已匯入", "匯入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                        await _dialogService.ShowSuccessAsync("設定已匯入");
                     }
                 }
             }
             catch (Exception ex)
             {
                 await _loggerService.LogErrorAsync("匯入設定失敗", ex);
-                MessageBox.Show($"匯入設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                await _dialogService.ShowErrorAsync($"匯入設定失敗: {ex.Message}");
             }
         }
         
         /// <summary>
         /// 處理重設設定
         /// </summary>
-        public void HandleResetSettings()
+        public async Task HandleResetSettings()
         {
-            var result = MessageBox.Show(
-                "確定要重設所有設定為預設值嗎？此操作無法復原。", 
-                "確認重設", 
-                MessageBoxButton.YesNo, 
-                MessageBoxImage.Warning);
+            var result = await _dialogService.ShowConfirmationAsync("確定要重設所有設定為預設值嗎？此操作無法復原。");
                 
-            if (result == MessageBoxResult.Yes)
+            if (result)
             {
                 try
                 {
@@ -317,107 +312,80 @@ namespace RimWorldTranslationTool.Controllers
                         s.ModsConfigPath = defaultSettings.ModsConfigPath;
                     });
                     
-                    // 更新 UI
-                    UpdateUIFromSettings(defaultSettings).Wait();
-                    
-                    MessageBox.Show("設定已重設為預設值", "重設成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await _dialogService.ShowSuccessAsync("設定已重設為預設值");
                 }
                 catch (Exception ex)
                 {
-                    _ = _loggerService.LogErrorAsync("重設設定失敗", ex);
-                    MessageBox.Show($"重設設定失敗: {ex.Message}", "錯誤", MessageBoxButton.OK, MessageBoxImage.Error);
+                    await _loggerService.LogErrorAsync("重設設定失敗", ex);
+                    await _dialogService.ShowErrorAsync($"重設設定失敗: {ex.Message}");
                 }
             }
         }
         
         /// <summary>
-        /// 更新遊戲路徑驗證 UI
+        /// 更新遊戲路徑驗證 ViewModel
         /// </summary>
         private void UpdateGamePathValidation(ValidationResult validation)
         {
+            if (_viewModel == null) return;
+
             try
             {
-                if (_mainWindow.GamePathValidationIcon != null)
+                _viewModel.GamePathValidationIcon = validation.Status switch
                 {
-                    switch (validation.Status)
-                    {
-                        case ValidationStatus.Valid:
-                            _mainWindow.GamePathValidationIcon.Text = "✓";
-                            _mainWindow.GamePathValidationIcon.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
-                            _mainWindow.GamePathStatusIcon.Visibility = Visibility.Visible;
-                            break;
-                        case ValidationStatus.Warning:
-                            _mainWindow.GamePathValidationIcon.Text = "⚠️";
-                            _mainWindow.GamePathValidationIcon.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 158, 11));
-                            _mainWindow.GamePathStatusIcon.Visibility = Visibility.Collapsed;
-                            break;
-                        case ValidationStatus.Error:
-                            _mainWindow.GamePathValidationIcon.Text = "✗";
-                            _mainWindow.GamePathValidationIcon.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68));
-                            _mainWindow.GamePathStatusIcon.Visibility = Visibility.Collapsed;
-                            break;
-                        default:
-                            _mainWindow.GamePathValidationIcon.Text = "";
-                            _mainWindow.GamePathStatusIcon.Visibility = Visibility.Collapsed;
-                            break;
-                    }
-                }
+                    ValidationStatus.Valid => "✓",
+                    ValidationStatus.Warning => "⚠️",
+                    ValidationStatus.Error => "✗",
+                    _ => ""
+                };
+
+                _viewModel.GamePathValidationColor = validation.Status switch
+                {
+                    ValidationStatus.Valid => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94)),
+                    ValidationStatus.Warning => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 158, 11)),
+                    ValidationStatus.Error => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68)),
+                    _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(107, 114, 128))
+                };
+
+                _viewModel.GamePathValidationMessage = validation.Message;
+                _viewModel.IsGamePathValid = (validation.Status == ValidationStatus.Valid);
+            }
+            catch (Exception ex)
+            {
+                _ = _loggerService.LogErrorAsync("更新遊戲路徑驗證 ViewModel 失敗", ex);
+            }
+        }
+        
+        /// <summary>
+        /// 從設定更新 ViewModel
+        /// </summary>
+        private void UpdateViewModelFromSettings(AppSettings settings)
+        {
+            if (_viewModel == null) return;
+
+            try
+            {
+                _viewModel.GamePath = settings.GamePath;
+                _viewModel.SelectedGameVersion = settings.GameVersion;
+                _viewModel.SelectedLanguage = settings.Language;
                 
-                if (_mainWindow.GamePathValidationText != null)
+                if (!string.IsNullOrEmpty(settings.ModsConfigPath))
                 {
-                    _mainWindow.GamePathValidationText.Text = validation.Message;
-                    _mainWindow.GamePathValidationText.Foreground = validation.Status switch
-                    {
-                        ValidationStatus.Valid => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94)),
-                        ValidationStatus.Warning => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 158, 11)),
-                        ValidationStatus.Error => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68)),
-                        _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(107, 114, 128))
-                    };
+                    _viewModel.ModsConfigPath = Path.GetFileName(settings.ModsConfigPath);
                 }
             }
             catch (Exception ex)
             {
-                _ = _loggerService.LogErrorAsync("更新遊戲路徑驗證 UI 失敗", ex);
+                _ = _loggerService.LogErrorAsync("更新 ViewModel 失敗", ex);
             }
-        }
-        
-        /// <summary>
-        /// 從設定更新 UI
-        /// </summary>
-        private async Task UpdateUIFromSettings(AppSettings settings)
-        {
-            await System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
-            {
-                try
-                {
-                    if (_mainWindow.GamePathTextBox != null)
-                        _mainWindow.GamePathTextBox.Text = settings.GamePath;
-                    
-                    if (_mainWindow.GameVersionComboBox != null)
-                        _mainWindow.GameVersionComboBox.SelectedItem = settings.GameVersion;
-                    
-                    if (_mainWindow.LanguageComboBox != null)
-                        _mainWindow.LanguageComboBox.SelectedItem = settings.Language;
-                    
-                    if (_mainWindow.ModsConfigPathText != null && !string.IsNullOrEmpty(settings.ModsConfigPath))
-                    {
-                        _mainWindow.ModsConfigPathText.Text = Path.GetFileName(settings.ModsConfigPath);
-                        _mainWindow.ModsConfigPathSubText.Text = settings.ModsConfigPath;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _ = _loggerService.LogErrorAsync("更新 UI 失敗", ex);
-                }
-            });
         }
         
         /// <summary>
         /// 設定載入完成事件處理
         /// </summary>
-        private async void OnSettingsLoaded(object? sender, SettingsLoadedEventArgs e)
+        private void OnSettingsLoaded(object? sender, SettingsLoadedEventArgs e)
         {
-            await UpdateUIFromSettings(e.Settings);
+            UpdateViewModelFromSettings(e.Settings);
         }
         
         /// <summary>

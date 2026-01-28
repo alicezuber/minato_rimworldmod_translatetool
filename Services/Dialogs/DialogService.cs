@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 
+using RimWorldTranslationTool.Services.Paths;
+
 namespace RimWorldTranslationTool.Services.Dialogs
 {
     /// <summary>
@@ -13,6 +15,12 @@ namespace RimWorldTranslationTool.Services.Dialogs
     /// </summary>
     public class DialogService : IDialogService
     {
+        private readonly IPathService _pathService;
+        
+        public DialogService(IPathService pathService)
+        {
+            _pathService = pathService;
+        }
         public async Task ShowSuccessAsync(string message, string title = "成功")
         {
             await ShowCustomDialogAsync(message, title, DialogType.Success);
@@ -133,7 +141,7 @@ namespace RimWorldTranslationTool.Services.Dialogs
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var dialog = new LogViewerDialog();
+                var dialog = new LogViewerDialog(_pathService);
                 dialog.ShowDialog();
             }).Task.ConfigureAwait(false);
         }
@@ -450,7 +458,21 @@ namespace RimWorldTranslationTool.Services.Dialogs
     /// </summary>
     public class LogViewerDialog : Window
     {
+        private readonly IPathService _pathService;
+        
+        public LogViewerDialog(IPathService pathService)
+        {
+            _pathService = pathService;
+            Initialize();
+        }
+        
         public LogViewerDialog()
+        {
+            _pathService = null!;
+            Initialize();
+        }
+        
+        private void Initialize()
         {
             Title = "日誌檢視器";
             Width = 800;
@@ -508,16 +530,14 @@ namespace RimWorldTranslationTool.Services.Dialogs
         {
             try
             {
-                // 這裡需要注入日誌服務來讀取日誌
-                // 暫時使用簡單的實現
-                var logPath = System.IO.Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                var logRoot = _pathService?.GetLogsDirectory() ?? System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                     "RimWorldTranslationTool",
                     "Logs");
                 
                 if (System.IO.Directory.Exists(logPath))
                 {
-                    var logFiles = System.IO.Directory.GetFiles(logPath, "*.log")
+                    var logFiles = System.IO.Directory.GetFiles(logRoot, "*.log")
                         .OrderByDescending(f => f)
                         .Take(5); // 只顯示最近5個日誌檔案
                     
