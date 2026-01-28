@@ -1,9 +1,11 @@
 <Application x:Class="RimWorldTranslationTool.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             StartupUri="MainWindow.xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
+            <!-- 轉換器 -->
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+            
             <!-- 色彩定義 -->
             <Color x:Key="PrimaryColor">#2563EB</Color>
             <Color x:Key="PrimaryHoverColor">#1D4ED8</Color>

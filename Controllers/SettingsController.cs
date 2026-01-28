@@ -8,6 +8,8 @@ using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Logging;
 
+using RimWorldTranslationTool.ViewModels;
+
 namespace RimWorldTranslationTool.Controllers
 {
     /// <summary>
@@ -17,20 +19,26 @@ namespace RimWorldTranslationTool.Controllers
     {
         private readonly ISettingsService _settingsService;
         private readonly SettingsBackupService _backupService;
-        private readonly MainWindow _mainWindow;
         private readonly ILoggerService _loggerService;
+        private MainViewModel? _viewModel;
         
-        public SettingsController(ISettingsService settingsService, SettingsBackupService backupService, MainWindow mainWindow)
+        public SettingsController(ISettingsService settingsService, SettingsBackupService backupService)
         {
             _settingsService = settingsService;
             _backupService = backupService;
-            _mainWindow = mainWindow;
             _loggerService = new LoggerService();
             
             // 訂閱事件
             _settingsService.SettingsLoaded += OnSettingsLoaded;
             _settingsService.SettingsSaved += OnSettingsSaved;
         }
+
+        public void SetViewModel(MainViewModel viewModel)
+        {
+            _viewModel = viewModel;
+        }
+        
+        public string GetCurrentGamePath() => _settingsService.GetCurrentSettings().GamePath;
         
         /// <summary>
         /// 初始化設定
@@ -90,8 +98,11 @@ namespace RimWorldTranslationTool.Controllers
                 var result = dialog.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    // 更新 UI
-                    _mainWindow.GamePathTextBox.Text = dialog.SelectedPath;
+                    // 更新 ViewModel
+                    if (_viewModel != null)
+                    {
+                        _viewModel.GamePath = dialog.SelectedPath;
+                    }
                 }
             }
             catch (Exception ex)

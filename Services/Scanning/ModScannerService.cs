@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Paths;
 
@@ -24,16 +25,16 @@ namespace RimWorldTranslationTool.Services.Scanning
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task<List<ModInfo>> ScanModsAsync(string gamePath, IProgress<ScanProgress> progress = null)
+        public async Task<List<ModModel>> ScanModsAsync(string gamePath, IProgress<ScanProgress>? progress = null)
         {
-            var allModInfos = new List<ModInfo>();
+            var allModModels = new List<ModModel>();
             
             // 1. 掃描本地模組
             var localDirectories = CollectLocalModDirectories(gamePath);
             if (localDirectories.Any())
             {
                 var localMods = await ScanDirectoriesAsync(localDirectories, progress, ModSource.Local);
-                allModInfos.AddRange(localMods);
+                allModModels.AddRange(localMods);
             }
             
             // 2. 掃描核心模組
@@ -41,7 +42,7 @@ namespace RimWorldTranslationTool.Services.Scanning
             if (dataDirectories.Any())
             {
                 var coreMods = await ScanDirectoriesAsync(dataDirectories, progress, ModSource.Official);
-                allModInfos.AddRange(coreMods);
+                allModModels.AddRange(coreMods);
             }
             
             // 3. 掃描工作坊模組
@@ -49,32 +50,16 @@ namespace RimWorldTranslationTool.Services.Scanning
             if (workshopDirectories.Any())
             {
                 var workshopMods = await ScanDirectoriesAsync(workshopDirectories, progress, ModSource.Steam);
-                allModInfos.AddRange(workshopMods);
+                allModModels.AddRange(workshopMods);
             }
 
-            return allModInfos;
+            return allModModels;
         }
 
-        public async Task<List<ModInfo>> ScanLocalModsAsync(string gamePath, IProgress<ScanProgress> progress = null)
+        public async Task<List<ModModel>> ScanLocalModsAsync(string gamePath, IProgress<ScanProgress>? progress = null)
         {
             var localDirectories = CollectLocalModDirectories(gamePath);
             return await ScanDirectoriesAsync(localDirectories, progress, ModSource.Local);
-        }
-
-        private List<string> CollectAllModDirectories(string gamePath)
-        {
-            var allDirectories = new List<string>();
-            
-            // 1. 本體模組 (Mods 資料夾)
-            AddLocalModsDirectories(allDirectories, gamePath);
-            
-            // 2. 核心模組 (Data 資料夾)
-            AddDataDirectories(allDirectories, gamePath);
-            
-            // 3. 工作坊模組
-            AddWorkshopDirectories(allDirectories, gamePath);
-            
-            return allDirectories;
         }
 
         private List<string> CollectLocalModDirectories(string gamePath)
@@ -152,9 +137,9 @@ namespace RimWorldTranslationTool.Services.Scanning
             }
         }
 
-        private async Task<List<ModInfo>> ScanDirectoriesAsync(List<string> directories, IProgress<ScanProgress> progress = null, ModSource source = ModSource.Unknown)
+        private async Task<List<ModModel>> ScanDirectoriesAsync(List<string> directories, IProgress<ScanProgress>? progress = null, ModSource source = ModSource.Unknown)
         {
-            var modInfos = new List<ModInfo>();
+            var modModels = new List<ModModel>();
             int total = directories.Count;
             int processed = 0;
 
@@ -164,16 +149,15 @@ namespace RimWorldTranslationTool.Services.Scanning
             {
                 foreach (var dir in directories)
                 {
-                    var modInfo = _modInfoService.LoadModInfo(dir);
-                    if (modInfo != null)
+                    var modModel = _modInfoService.LoadModInfo(dir);
+                    if (modModel != null)
                     {
-                        modInfo.Source = source; // 設置模組來源
-                        modInfos.Add(modInfo);
+                        modModel.Source = source;
+                        modModels.Add(modModel);
                     }
 
                     processed++;
                     
-                    // 報告進度
                     if (progress != null)
                     {
                         var scanProgress = new ScanProgress
@@ -188,8 +172,8 @@ namespace RimWorldTranslationTool.Services.Scanning
                 }
             });
 
-            _logger.LogInfoAsync($"掃描完成，找到 {modInfos.Count} 個有效模組").Wait();
-            return modInfos;
+            _logger.LogInfoAsync($"掃描完成，找到 {modModels.Count} 個有效模組").Wait();
+            return modModels;
         }
     }
 }

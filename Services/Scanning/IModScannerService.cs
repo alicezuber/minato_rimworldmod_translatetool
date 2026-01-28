@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool.Services.Scanning
 {
@@ -15,7 +16,7 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// <param name="gamePath">RimWorld 遊戲路徑</param>
         /// <param name="progress">進度報告</param>
         /// <returns>找到的模組列表</returns>
-        Task<List<ModInfo>> ScanModsAsync(string gamePath, IProgress<ScanProgress> progress = null);
+        Task<List<ModModel>> ScanModsAsync(string gamePath, IProgress<ScanProgress>? progress = null);
         
         /// <summary>
         /// 只掃描本地模組資料夾
@@ -23,7 +24,7 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// <param name="gamePath">RimWorld 遊戲路徑</param>
         /// <param name="progress">進度報告</param>
         /// <returns>找到的本地模組列表</returns>
-        Task<List<ModInfo>> ScanLocalModsAsync(string gamePath, IProgress<ScanProgress> progress = null);
+        Task<List<ModModel>> ScanLocalModsAsync(string gamePath, IProgress<ScanProgress>? progress = null);
     }
 
     /// <summary>
@@ -36,7 +37,7 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// </summary>
         /// <param name="modPath">模組路徑</param>
         /// <returns>模組資訊，如果載入失敗返回 null</returns>
-        ModInfo LoadModInfo(string modPath);
+        ModModel? LoadModInfo(string modPath);
         
         /// <summary>
         /// 檢查是否為有效的模組目錄

@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Windows.Media.Imaging;
-using System.Xml.Linq;
+using RimWorldTranslationTool.Models;
 using RimWorldTranslationTool.Services.Infrastructure;
 using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Paths;
@@ -34,7 +33,7 @@ namespace RimWorldTranslationTool.Services.Scanning
             return File.Exists(aboutXmlPath);
         }
 
-        public ModInfo LoadModInfo(string modPath)
+        public ModModel? LoadModInfo(string modPath)
         {
             try
             {
@@ -66,16 +65,15 @@ namespace RimWorldTranslationTool.Services.Scanning
 
                 _logger.LogInfoAsync($"載入模組: {name} ({packageId})").Wait();
 
-                var modInfo = new ModInfo
+                var modModel = new ModModel
                 {
                     FolderName = folderName,
                     Name = name,
                     Author = _xmlParser.GetElementValue(meta, "author"),
                     PackageId = packageId,
                     SupportedVersions = _xmlParser.GetVersionsString(meta.Element("supportedVersions")),
-                    SupportedLanguages = DetectSupportedLanguages(modPath),  // 新增：檢測支援語言
+                    SupportedLanguages = DetectSupportedLanguages(modPath),
                     
-                    // 新增：完整 About.xml 支援
                     Description = _xmlParser.GetDescription(meta),
                     Url = _xmlParser.GetUrl(meta),
                     ModVersion = _xmlParser.GetModVersion(meta),
@@ -87,10 +85,10 @@ namespace RimWorldTranslationTool.Services.Scanning
                     IsVersionCompatible = CheckVersionCompatibility(_xmlParser.GetVersionsString(meta.Element("supportedVersions")))
                 };
 
-                // 載入預覽圖
-                LoadPreviewImage(modInfo, modPath);
+                // 獲取預覽圖路徑
+                modModel.PreviewImagePath = GetPreviewImagePath(modPath);
 
-                return modInfo;
+                return modModel;
             }
             catch (Exception ex)
             {
@@ -99,41 +97,21 @@ namespace RimWorldTranslationTool.Services.Scanning
             }
         }
 
-        private void LoadPreviewImage(ModInfo modInfo, string modPath)
+        private string? GetPreviewImagePath(string modPath)
         {
             // 嘗試標準路徑
             string previewPath = Path.Combine(modPath, "About", "Preview.png");
-            
-            // 如果不存在，嘗試核心模組路徑
-            if (!File.Exists(previewPath))
-            {
-                previewPath = Path.Combine(modPath, "Preview.png");
-            }
+            if (File.Exists(previewPath)) return previewPath;
 
-            if (File.Exists(previewPath))
-            {
-                try
-                {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.UriSource = new Uri(previewPath);
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    modInfo.PreviewImage = bitmap;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogErrorAsync($"載入預覽圖片失敗: {previewPath}", ex).Wait();
-                    // 預覽圖載入失敗不影響模組資訊
-                }
-            }
+            // 如果不存在，嘗試核心模組路徑
+            previewPath = Path.Combine(modPath, "Preview.png");
+            if (File.Exists(previewPath)) return previewPath;
+
+            return null;
         }
 
         private bool CheckVersionCompatibility(string supportedVersions)
         {
-            // 簡化版本相容性檢查 - 暫時返回 true
-            // 未來可以根據需要實現更複雜的版本檢查邏輯
             return true;
         }
 

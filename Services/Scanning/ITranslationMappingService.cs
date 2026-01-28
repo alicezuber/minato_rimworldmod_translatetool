@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using RimWorldTranslationTool.Models;
 
 namespace RimWorldTranslationTool.Services.Scanning
 {
@@ -14,14 +15,14 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// </summary>
         /// <param name="allMods">所有模組列表</param>
         /// <returns>映射字典：Key 為目標模組 PackageId，Value 為翻譯模組列表</returns>
-        Task<Dictionary<string, List<ModInfo>>> BuildTranslationMappingsAsync(IEnumerable<ModInfo> allMods);
+        Task<Dictionary<string, List<ModModel>>> BuildTranslationMappingsAsync(IEnumerable<ModModel> allMods);
         
         /// <summary>
         /// 檢查模組是否為翻譯模組
         /// </summary>
         /// <param name="mod">要檢查的模組</param>
         /// <returns>是否為翻譯模組</returns>
-        bool IsTranslationMod(ModInfo mod);
+        bool IsTranslationMod(ModModel mod);
         
         /// <summary>
         /// 獲取翻譯模組的目標模組列表
@@ -29,7 +30,7 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// <param name="translationMod">翻譯模組</param>
         /// <param name="allMods">所有模組列表</param>
         /// <returns>目標模組列表</returns>
-        Task<List<ModInfo>> GetTargetModsForTranslationAsync(ModInfo translationMod, IEnumerable<ModInfo> allMods);
+        Task<List<ModModel>> GetTargetModsForTranslationAsync(ModModel translationMod, IEnumerable<ModModel> allMods);
         
         /// <summary>
         /// 獲取模組的翻譯補丁列表
@@ -37,6 +38,6 @@ namespace RimWorldTranslationTool.Services.Scanning
         /// <param name="targetMod">目標模組</param>
         /// <param name="mappings">映射字典</param>
         /// <returns>翻譯補丁列表</returns>
-        List<ModInfo> GetTranslationPatchesForMod(ModInfo targetMod, Dictionary<string, List<ModInfo>> mappings);
+        List<ModModel> GetTranslationPatchesForMod(ModModel targetMod, Dictionary<string, List<ModModel>> mappings);
     }
 }
