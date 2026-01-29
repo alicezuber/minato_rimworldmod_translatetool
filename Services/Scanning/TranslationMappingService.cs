@@ -113,8 +113,10 @@ namespace RimWorldTranslationTool.Services.Scanning
         {
             try
             {
-                var languagesPath = _pathService.GetModLanguagesPath(GetModPath(mod));
-                if (!Directory.Exists(languagesPath)) return false;
+                if (!_pathService.TryGetModLanguagesPath(GetModPath(mod), out var languagesPath) || !Directory.Exists(languagesPath))
+                {
+                    return false;
+                }
 
                 var languageDirs = Directory.GetDirectories(languagesPath);
                 foreach (var langDir in languageDirs)
@@ -171,9 +173,10 @@ namespace RimWorldTranslationTool.Services.Scanning
         private async Task<HashSet<string>> ExtractTargetDefNamesAsync(string translationModPath)
         {
             var targetDefs = new HashSet<string>();
-            var languagesPath = _pathService.GetModLanguagesPath(translationModPath);
-
-            if (!Directory.Exists(languagesPath)) return targetDefs;
+            if (!_pathService.TryGetModLanguagesPath(translationModPath, out var languagesPath) || !Directory.Exists(languagesPath))
+            {
+                return targetDefs;
+            }
 
             foreach (var langDir in Directory.GetDirectories(languagesPath))
             {

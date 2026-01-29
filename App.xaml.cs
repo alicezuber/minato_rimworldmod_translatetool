@@ -22,16 +22,7 @@ namespace RimWorldTranslationTool
 
         public IServiceProvider? ServiceProvider => _serviceProvider;
 
-        // 向後相容屬性
-        public ILoggerService? LoggerService => _serviceProvider?.GetService<ILoggerService>();
-        public IDialogService? DialogService => _serviceProvider?.GetService<IDialogService>();
-        public IErrorHandler? ErrorHandler => _serviceProvider?.GetService<IErrorHandler>();
-        public IPathService? PathService => _serviceProvider?.GetService<IPathService>();
-        public ICrashReportService? CrashReportService => _serviceProvider?.GetService<ICrashReportService>();
-        public IEmergencySaveService? EmergencySaveService => _serviceProvider?.GetService<IEmergencySaveService>();
-        public IECSManager? ECSManager => _serviceProvider?.GetService<IECSManager>();
-
-        protected override void OnStartup(StartupEventArgs e)
+        private void OnApplicationStartup(object sender, StartupEventArgs e)
         {
             try
             {
@@ -47,8 +38,6 @@ namespace RimWorldTranslationTool
                 // 4. 顯示主視窗
                 var mainWindow = _serviceProvider?.GetRequiredService<MainWindow>();
                 mainWindow?.Show();
-
-                base.OnStartup(e);
             }
             catch (Exception ex)
             {
@@ -56,6 +45,15 @@ namespace RimWorldTranslationTool
                 Shutdown(1);
             }
         }
+
+        // 向後相容屬性
+        public ILoggerService? LoggerService => _serviceProvider?.GetService<ILoggerService>();
+        public IDialogService? DialogService => _serviceProvider?.GetService<IDialogService>();
+        public IErrorHandler? ErrorHandler => _serviceProvider?.GetService<IErrorHandler>();
+        public IPathService? PathService => _serviceProvider?.GetService<IPathService>();
+        public ICrashReportService? CrashReportService => _serviceProvider?.GetService<ICrashReportService>();
+        public IEmergencySaveService? EmergencySaveService => _serviceProvider?.GetService<IEmergencySaveService>();
+        public IECSManager? ECSManager => _serviceProvider?.GetService<IECSManager>();
 
         private void ConfigureServices()
         {

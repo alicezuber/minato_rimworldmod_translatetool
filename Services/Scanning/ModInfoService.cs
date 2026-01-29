@@ -29,8 +29,7 @@ namespace RimWorldTranslationTool.Services.Scanning
             if (string.IsNullOrEmpty(path))
                 return false;
 
-            var aboutXmlPath = _pathService.GetModAboutXmlPath(path);
-            return File.Exists(aboutXmlPath);
+            return _pathService.TryGetModAboutXmlPath(path, out var aboutXmlPath) && File.Exists(aboutXmlPath);
         }
 
         public ModModel? LoadModInfo(string modPath)
@@ -43,7 +42,12 @@ namespace RimWorldTranslationTool.Services.Scanning
                     return null;
                 }
 
-                var aboutXmlPath = _pathService.GetModAboutXmlPath(modPath);
+                if (!_pathService.TryGetModAboutXmlPath(modPath, out var aboutXmlPath))
+                {
+                    _logger.LogWarningAsync($"無法獲取 About.xml 路徑: {modPath}").Wait();
+                    return null;
+                }
+                
                 var aboutXml = _xmlParser.LoadXml(aboutXmlPath);
                 
                 if (aboutXml?.Root == null)
@@ -119,9 +123,7 @@ namespace RimWorldTranslationTool.Services.Scanning
         {
             try
             {
-                var languagesPath = _pathService.GetModLanguagesPath(modPath);
-                
-                if (!Directory.Exists(languagesPath))
+                if (!_pathService.TryGetModLanguagesPath(modPath, out var languagesPath) || !Directory.Exists(languagesPath))
                 {
                     return "unknown";
                 }

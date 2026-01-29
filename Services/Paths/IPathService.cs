@@ -14,24 +14,44 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="gamePath">遊戲本體路徑</param>
         /// <returns>工作坊路徑，如果無法推導則返回空字串</returns>
         string GetWorkshopPath(string gamePath);
+
+        /// <summary>
+        /// 嘗試獲取工作坊路徑
+        /// </summary>
+        bool TryGetWorkshopPath(string gamePath, out string path);
         
         /// <summary>
         /// 獲取 RimWorld 設定資料夾路徑
         /// </summary>
         /// <returns>設定資料夾路徑</returns>
         string GetConfigPath();
+
+        /// <summary>
+        /// 嘗試獲取設定路徑
+        /// </summary>
+        bool TryGetConfigPath(out string path);
         
         /// <summary>
         /// 獲取 ModsConfig.xml 完整路徑
         /// </summary>
         /// <returns>ModsConfig.xml 路徑</returns>
         string GetModsConfigPath();
+
+        /// <summary>
+        /// 嘗試獲取 ModsConfig.xml 路徑
+        /// </summary>
+        bool TryGetModsConfigPath(out string path);
         
         /// <summary>
         /// 獲取存檔資料夾路徑
         /// </summary>
         /// <returns>存檔資料夾路徑</returns>
         string GetSavesPath();
+
+        /// <summary>
+        /// 嘗試獲取存檔路徑
+        /// </summary>
+        bool TryGetSavesPath(out string path);
         
         /// <summary>
         /// 根據遊戲本體路徑獲取本地模組資料夾路徑
@@ -39,6 +59,11 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="gamePath">遊戲本體路徑</param>
         /// <returns>本地模組資料夾路徑</returns>
         string GetLocalModsPath(string gamePath);
+
+        /// <summary>
+        /// 嘗試獲取本地模組路徑
+        /// </summary>
+        bool TryGetLocalModsPath(string gamePath, out string path);
         
         /// <summary>
         /// 根據遊戲本體路徑獲取 Data 資料夾路徑
@@ -46,6 +71,11 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="gamePath">遊戲本體路徑</param>
         /// <returns>Data 資料夾路徑</returns>
         string GetDataPath(string gamePath);
+
+        /// <summary>
+        /// 嘗試獲取 Data 路徑
+        /// </summary>
+        bool TryGetDataPath(string gamePath, out string path);
         
         /// <summary>
         /// 驗證是否為有效的 RimWorld 遊戲路徑
@@ -66,6 +96,11 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="modFolderPath">模組資料夾路徑</param>
         /// <returns>About.xml 路徑</returns>
         string GetModAboutXmlPath(string modFolderPath);
+
+        /// <summary>
+        /// 嘗試獲取模組 About.xml 路徑
+        /// </summary>
+        bool TryGetModAboutXmlPath(string modFolderPath, out string path);
         
         /// <summary>
         /// 根據模組資料夾路徑獲取模組的 Languages 資料夾路徑
@@ -73,6 +108,11 @@ namespace RimWorldTranslationTool.Services.Paths
         /// <param name="modFolderPath">模組資料夾路徑</param>
         /// <returns>Languages 資料夾路徑</returns>
         string GetModLanguagesPath(string modFolderPath);
+
+        /// <summary>
+        /// 嘗試獲取模組 Languages 路徑
+        /// </summary>
+        bool TryGetModLanguagesPath(string modFolderPath, out string path);
         
         /// <summary>
         /// 檢查路徑是否存在且可存取

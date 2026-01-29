@@ -1,0 +1,67 @@
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.cs]
+# StyleCop.Analyzers Rules
+# SA1309: Field names should not begin with underscore
+dotnet_diagnostic.SA1309.severity = none
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+# SA1200: Using directives should be inside namespace
+dotnet_diagnostic.SA1200.severity = none
+# SA1101: Prefix local calls with this
+dotnet_diagnostic.SA1101.severity = none
+# SA1124: Do not use regions
+dotnet_diagnostic.SA1124.severity = none
+# SA1516: Elements should be separated by blank line
+dotnet_diagnostic.SA1516.severity = none
+# SA1413: Use trailing comma in multi-line initializers
+dotnet_diagnostic.SA1413.severity = none
+# SA1513: Closing brace should be followed by blank line
+dotnet_diagnostic.SA1513.severity = none
+# SA1009: Closing parenthesis should not be preceded by a space
+dotnet_diagnostic.SA1009.severity = none
+# SA1402: File may only contain a single type
+dotnet_diagnostic.SA1402.severity = none
+# SA1028: Code should not contain trailing whitespace
+dotnet_diagnostic.SA1028.severity = none
+# SA1503: Braces should not be omitted
+dotnet_diagnostic.SA1503.severity = none
+# SA1122: Use string.Empty for empty strings
+dotnet_diagnostic.SA1122.severity = none
+# SA1500: Braces for multi-line statements should not share line
+dotnet_diagnostic.SA1500.severity = none
+# SA1515: Single-line comment should be preceded by blank line
+dotnet_diagnostic.SA1515.severity = none
+# SA1116: Parameters should begin on the line after the declaration
+dotnet_diagnostic.SA1116.severity = none
+# SA1117: Parameters should all be placed on the same line or each on its own line
+dotnet_diagnostic.SA1117.severity = none
+# SA1000: Keyword should be followed by a space
+dotnet_diagnostic.SA1000.severity = none
+# SA1501: Statement should not be on a single line
+dotnet_diagnostic.SA1501.severity = none
+# SA1111: Closing parenthesis should be on line of last parameter
+dotnet_diagnostic.SA1111.severity = none
+# SA1025: Code should not contain multiple whitespace characters in a row
+dotnet_diagnostic.SA1025.severity = none
+# SA1119: Statement should not use unnecessary parenthesis
+dotnet_diagnostic.SA1119.severity = none
+
+# Standard .NET Coding Conventions
+dotnet_naming_rule.private_member_with_underscore.symbols = private_fields
+dotnet_naming_rule.private_member_with_underscore.style = prefix_underscore
+dotnet_naming_rule.private_member_with_underscore.severity = suggestion
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.prefix_underscore.capitalization = camel_case
+dotnet_naming_style.prefix_underscore.required_prefix = _

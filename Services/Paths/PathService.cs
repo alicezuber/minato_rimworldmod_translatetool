@@ -57,6 +57,19 @@ namespace RimWorldTranslationTool.Services.Paths
                 return "";
             }
         }
+
+        public bool TryGetWorkshopPath(string gamePath, out string path)
+        {
+            path = "";
+            if (string.IsNullOrEmpty(gamePath)) return false;
+            var result = GetWorkshopPath(gamePath);
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
+        }
         
         /// <summary>
         /// 獲取 RimWorld 設定資料夾路徑
@@ -66,7 +79,7 @@ namespace RimWorldTranslationTool.Services.Paths
             try
             {
                 var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var configPath = Path.Combine(localAppData, "..", "LocalLow", PathConstants.ConfigFolder);
+                var configPath = Path.Combine(localAppData, "..", "LocalLow", PathConstants.ConfigFolderName);
                 
                 // 標準化路徑
                 return Path.GetFullPath(configPath);
@@ -76,6 +89,18 @@ namespace RimWorldTranslationTool.Services.Paths
                 _ = _loggerService.LogErrorAsync("獲取設定路徑失敗", ex);
                 return "";
             }
+        }
+
+        public bool TryGetConfigPath(out string path)
+        {
+            path = "";
+            var result = GetConfigPath();
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
         }
         
         /// <summary>
@@ -97,6 +122,18 @@ namespace RimWorldTranslationTool.Services.Paths
                 return "";
             }
         }
+
+        public bool TryGetModsConfigPath(out string path)
+        {
+            path = "";
+            var result = GetModsConfigPath();
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
+        }
         
         /// <summary>
         /// 獲取存檔資料夾路徑
@@ -117,6 +154,18 @@ namespace RimWorldTranslationTool.Services.Paths
                 return "";
             }
         }
+
+        public bool TryGetSavesPath(out string path)
+        {
+            path = "";
+            var result = GetSavesPath();
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
+        }
         
         /// <summary>
         /// 根據遊戲本體路徑獲取本地模組資料夾路徑
@@ -136,6 +185,19 @@ namespace RimWorldTranslationTool.Services.Paths
                 return "";
             }
         }
+
+        public bool TryGetLocalModsPath(string gamePath, out string path)
+        {
+            path = "";
+            if (string.IsNullOrEmpty(gamePath)) return false;
+            var result = GetLocalModsPath(gamePath);
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
+        }
         
         /// <summary>
         /// 根據遊戲本體路徑獲取 Data 資料夾路徑
@@ -154,6 +216,19 @@ namespace RimWorldTranslationTool.Services.Paths
                 _ = _loggerService.LogErrorAsync($"獲取 Data 路徑失敗: {gamePath}", ex);
                 return "";
             }
+        }
+
+        public bool TryGetDataPath(string gamePath, out string path)
+        {
+            path = "";
+            if (string.IsNullOrEmpty(gamePath)) return false;
+            var result = GetDataPath(gamePath);
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
         }
         
         /// <summary>
@@ -317,6 +392,19 @@ namespace RimWorldTranslationTool.Services.Paths
                 return "";
             }
         }
+
+        public bool TryGetModAboutXmlPath(string modFolderPath, out string path)
+        {
+            path = "";
+            if (string.IsNullOrEmpty(modFolderPath)) return false;
+            var result = GetModAboutXmlPath(modFolderPath);
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
+        }
         
         /// <summary>
         /// 根據模組資料夾路徑獲取模組的 Languages 資料夾路徑
@@ -335,6 +423,19 @@ namespace RimWorldTranslationTool.Services.Paths
                 _ = _loggerService.LogErrorAsync($"獲取模組 Languages 路徑失敗: {modFolderPath}", ex);
                 return "";
             }
+        }
+
+        public bool TryGetModLanguagesPath(string modFolderPath, out string path)
+        {
+            path = "";
+            if (string.IsNullOrEmpty(modFolderPath)) return false;
+            var result = GetModLanguagesPath(modFolderPath);
+            if (!string.IsNullOrEmpty(result))
+            {
+                path = result;
+                return true;
+            }
+            return false;
         }
         
         /// <summary>

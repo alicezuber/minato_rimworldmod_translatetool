@@ -401,6 +401,8 @@ namespace RimWorldTranslationTool.Services.Dialogs
     /// </summary>
     public class AboutDialog : Window
     {
+        private static readonly System.Reflection.Assembly _executingAssembly = System.Reflection.Assembly.GetExecutingAssembly();
+        
         public AboutDialog()
         {
             Title = "關於 RimWorld 翻譯工具";
@@ -423,7 +425,7 @@ namespace RimWorldTranslationTool.Services.Dialogs
             
             var versionText = new TextBlock
             {
-                Text = $"版本: {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}",
+                Text = $"版本: {_executingAssembly.GetName().Version}",
                 Margin = new Thickness(0, 0, 0, 10)
             };
             
@@ -535,7 +537,7 @@ namespace RimWorldTranslationTool.Services.Dialogs
                     "RimWorldTranslationTool",
                     "Logs");
                 
-                if (System.IO.Directory.Exists(logPath))
+                if (System.IO.Directory.Exists(logRoot))
                 {
                     var logFiles = System.IO.Directory.GetFiles(logRoot, "*.log")
                         .OrderByDescending(f => f)

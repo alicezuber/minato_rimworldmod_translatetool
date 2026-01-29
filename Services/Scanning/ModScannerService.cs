@@ -85,24 +85,22 @@ namespace RimWorldTranslationTool.Services.Scanning
 
         private void AddLocalModsDirectories(List<string> directories, string gamePath)
         {
-            var modsPath = _pathService.GetLocalModsPath(gamePath);
-            if (_pathService.PathExists(modsPath))
+            if (_pathService.TryGetLocalModsPath(gamePath, out var modsPath))
             {
                 directories.AddRange(Directory.GetDirectories(modsPath));
                 _logger.LogInfoAsync($"掃描本地模組: {modsPath}").Wait();
             }
             else
             {
-                _logger.LogWarningAsync($"本地模組目錄不存在: {modsPath}").Wait();
+                _logger.LogWarningAsync($"無法獲取本地模組路徑，遊戲路徑: {gamePath}").Wait();
             }
         }
 
         private void AddDataDirectories(List<string> directories, string gamePath)
         {
-            var dataPath = _pathService.GetDataPath(gamePath);
-            if (!_pathService.PathExists(dataPath))
+            if (!_pathService.TryGetDataPath(gamePath, out var dataPath))
             {
-                _logger.LogWarningAsync($"Data 目錄不存在: {dataPath}").Wait();
+                _logger.LogWarningAsync($"無法獲取 Data 目錄路徑，遊戲路徑: {gamePath}").Wait();
                 return;
             }
 
@@ -125,15 +123,14 @@ namespace RimWorldTranslationTool.Services.Scanning
 
         private void AddWorkshopDirectories(List<string> directories, string gamePath)
         {
-            var workshopPath = _pathService.GetWorkshopPath(gamePath);
-            if (_pathService.PathExists(workshopPath))
+            if (_pathService.TryGetWorkshopPath(gamePath, out var workshopPath))
             {
                 directories.AddRange(Directory.GetDirectories(workshopPath));
                 _logger.LogInfoAsync($"掃描工作坊模組: {workshopPath}").Wait();
             }
             else
             {
-                _logger.LogWarningAsync($"工作坊目錄不存在: {workshopPath}").Wait();
+                _logger.LogWarningAsync($"無法獲取工作坊目錄路徑，遊戲路徑: {gamePath}").Wait();
             }
         }
 

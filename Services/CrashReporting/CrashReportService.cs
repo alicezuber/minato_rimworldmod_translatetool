@@ -16,6 +16,7 @@ namespace RimWorldTranslationTool.Services.CrashReporting
     /// </summary>
     public class CrashReportService : ICrashReportService
     {
+        private static readonly Assembly _executingAssembly = Assembly.GetExecutingAssembly();
         private readonly IPathService _pathService;
 
         public CrashReportService(IPathService pathService)
@@ -43,7 +44,7 @@ namespace RimWorldTranslationTool.Services.CrashReporting
                 ApplicationInfo = GetApplicationInfo()
             };
 
-            return await Task.FromResult(report);
+            return report;
         }
 
         public async Task SaveCrashReportAsync(CrashReport report)
@@ -145,11 +146,11 @@ namespace RimWorldTranslationTool.Services.CrashReporting
 
         private ApplicationInfo GetApplicationInfo()
         {
-            var assembly = Assembly.GetExecutingAssembly();
+            var assemblyName = _executingAssembly.GetName();
             return new ApplicationInfo
             {
-                ApplicationName = assembly.GetName().Name ?? "RimWorldTranslationTool",
-                Version = assembly.GetName().Version?.ToString() ?? "1.0.0",
+                ApplicationName = assemblyName.Name ?? "RimWorldTranslationTool",
+                Version = assemblyName.Version?.ToString() ?? "1.0.0",
                 IsDebugMode = false, // 這裡可以根據編譯符號調整
                 LoadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Select(a => a.GetName().Name ?? "").ToArray()
             };
