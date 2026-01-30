@@ -9,6 +9,21 @@ namespace RimWorldTranslationTool.Services.Logging
     public interface ILoggerService
     {
         /// <summary>
+        /// 日誌級別
+        /// </summary>
+        LogLevel MinimumLevel { get; set; }
+        
+        /// <summary>
+        /// 是否啟用檔案日誌
+        /// </summary>
+        bool EnableFileLogging { get; set; }
+        
+        /// <summary>
+        /// 是否啟用控制台日誌
+        /// </summary>
+        bool EnableConsoleLogging { get; set; }
+        
+        /// <summary>
         /// 記錄資訊日誌
         /// </summary>
         Task LogInfoAsync(string message, string category = "");
@@ -67,21 +82,6 @@ namespace RimWorldTranslationTool.Services.Logging
         /// 清空所有日誌
         /// </summary>
         Task ClearAllLogsAsync();
-        
-        /// <summary>
-        /// 日誌級別
-        /// </summary>
-        LogLevel MinimumLevel { get; set; }
-        
-        /// <summary>
-        /// 是否啟用檔案日誌
-        /// </summary>
-        bool EnableFileLogging { get; set; }
-        
-        /// <summary>
-        /// 是否啟用控制台日誌
-        /// </summary>
-        bool EnableConsoleLogging { get; set; }
     }
     
     /// <summary>

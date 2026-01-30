@@ -4,10 +4,10 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using RimWorldTranslationTool.Models;
-using RimWorldTranslationTool.Services.Paths;
-using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.EmergencySave;
 using RimWorldTranslationTool.Services.Infrastructure;
+using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.Settings
 {
@@ -20,22 +20,14 @@ namespace RimWorldTranslationTool.Services.Settings
         private readonly IPathService _pathService;
         private readonly ILoggerService _loggerService;
         private readonly IEmergencySaveService _emergencySaveService;
+        private readonly object _lockObject = new object();
 
         private AppSettings _currentSettings = new AppSettings();
         private CancellationTokenSource? _saveCts;
         private bool _isLoadingSettings = false;
         private bool _autoSaveEnabled = false;
         private bool _manualSaveMode = false;
-        private readonly object _lockObject = new object();
         private bool _disposed = false;
-
-        public string ComponentName => "Settings";
-
-        // 設定檔案路徑
-        private string SettingsFilePath => _pathService.GetSettingsFilePath();
-
-        public event EventHandler<SettingsLoadedEventArgs>? SettingsLoaded;
-        public event EventHandler<SettingsSavedEventArgs>? SettingsSaved;
 
         public SettingsService(
             SettingsValidationService validationService,
@@ -51,6 +43,13 @@ namespace RimWorldTranslationTool.Services.Settings
             // 註冊到緊急儲存服務
             _emergencySaveService.RegisterComponent(this);
         }
+
+        public event EventHandler<SettingsLoadedEventArgs>? SettingsLoaded;
+        public event EventHandler<SettingsSavedEventArgs>? SettingsSaved;
+
+        public string ComponentName => "Settings";
+
+        private string SettingsFilePath => _pathService.GetSettingsFilePath();
 
         public async Task<AppSettings> LoadSettingsAsync()
         {

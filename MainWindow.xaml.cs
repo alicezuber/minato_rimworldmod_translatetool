@@ -2,8 +2,8 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using RimWorldTranslationTool.ViewModels;
 using RimWorldTranslationTool.Services.Paths;
+using RimWorldTranslationTool.ViewModels;
 
 namespace RimWorldTranslationTool
 {
@@ -93,7 +93,7 @@ namespace RimWorldTranslationTool
         private void BrowseGameButton_Click(object sender, RoutedEventArgs e)
         {
             _settingsController?.HandleBrowseGamePath();
-            _viewModel.GamePath = _settingsController.GetCurrentGamePath();
+            _viewModel.GamePath = _settingsController?.GetCurrentGamePath() ?? "";
         }
 
         private void ThemeToggleButton_Click(object sender, RoutedEventArgs e)

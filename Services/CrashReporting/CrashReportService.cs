@@ -33,6 +33,7 @@ namespace RimWorldTranslationTool.Services.CrashReporting
 
         public async Task<CrashReport> GenerateCrashReportAsync(Exception exception, string context = "")
         {
+            await Task.CompletedTask;
             var report = new CrashReport
             {
                 Timestamp = DateTime.Now,

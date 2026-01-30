@@ -109,7 +109,8 @@ namespace RimWorldTranslationTool.Services.Dialogs
             }).Task.ConfigureAwait(false);
         }
         
-        public async Task<T?> ShowSelectionDialogAsync<T>(string message, string title, T[] options, T? defaultOption = default) where T : class
+        public async Task<T?> ShowSelectionDialogAsync<T>(string message, string title, T[] options, T? defaultOption = default)
+            where T : class
         {
             return await Application.Current.Dispatcher.InvokeAsync(() =>
             {
@@ -191,8 +192,6 @@ namespace RimWorldTranslationTool.Services.Dialogs
     /// </summary>
     public class InputDialog : Window
     {
-        public string InputText { get; private set; } = "";
-        
         public InputDialog(string message, string title, string defaultValue = "")
         {
             Title = title;
@@ -226,8 +225,16 @@ namespace RimWorldTranslationTool.Services.Dialogs
             var okButton = new Button { Content = "確定", Width = 80, Margin = new Thickness(0, 0, 10, 0) };
             var cancelButton = new Button { Content = "取消", Width = 80 };
             
-            okButton.Click += (s, e) => { DialogResult = true; Close(); };
-            cancelButton.Click += (s, e) => { DialogResult = false; Close(); };
+            okButton.Click += (s, e) =>
+            {
+                DialogResult = true;
+                Close();
+            };
+            cancelButton.Click += (s, e) =>
+            {
+                DialogResult = false;
+                Close();
+            };
             
             buttonPanel.Children.Add(okButton);
             buttonPanel.Children.Add(cancelButton);
@@ -238,15 +245,16 @@ namespace RimWorldTranslationTool.Services.Dialogs
             
             Content = grid;
         }
+
+        public string InputText { get; private set; } = "";
     }
     
     /// <summary>
     /// 選擇對話框
     /// </summary>
-    public class SelectionDialog<T> : Window where T : class
+    public class SelectionDialog<T> : Window
+        where T : class
     {
-        public T? SelectedItem { get; private set; }
-        
         public SelectionDialog(string message, string title, T[] options, T? defaultOption = default)
         {
             Title = title;
@@ -299,7 +307,11 @@ namespace RimWorldTranslationTool.Services.Dialogs
                 Close();
             };
             
-            cancelButton.Click += (s, e) => { DialogResult = false; Close(); };
+            cancelButton.Click += (s, e) =>
+            {
+                DialogResult = false;
+                Close();
+            };
             
             buttonPanel.Children.Add(okButton);
             buttonPanel.Children.Add(cancelButton);
@@ -310,6 +322,8 @@ namespace RimWorldTranslationTool.Services.Dialogs
             
             Content = grid;
         }
+
+        public T? SelectedItem { get; private set; }
     }
     
     /// <summary>

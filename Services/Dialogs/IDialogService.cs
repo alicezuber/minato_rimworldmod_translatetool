@@ -51,7 +51,8 @@ namespace RimWorldTranslationTool.Services.Dialogs
         /// <summary>
         /// 顯示選擇對話框
         /// </summary>
-        Task<T?> ShowSelectionDialogAsync<T>(string message, string title, T[] options, T? defaultOption = default) where T : class;
+        Task<T?> ShowSelectionDialogAsync<T>(string message, string title, T[] options, T? defaultOption = default)
+            where T : class;
         
         /// <summary>
         /// 顯示進度對話框

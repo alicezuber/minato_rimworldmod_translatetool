@@ -9,6 +9,16 @@ namespace RimWorldTranslationTool.Services.EmergencySave
     public interface IEmergencySaveService
     {
         /// <summary>
+        /// 是否有未儲存的資料
+        /// </summary>
+        bool HasUnsavedData { get; }
+        
+        /// <summary>
+        /// 最後儲存時間
+        /// </summary>
+        DateTime LastSaveTime { get; }
+        
+        /// <summary>
         /// 註冊可儲存組件
         /// </summary>
         void RegisterComponent(ISavableComponent component);
@@ -52,16 +62,6 @@ namespace RimWorldTranslationTool.Services.EmergencySave
         /// 清理舊的緊急儲存檔案
         /// </summary>
         Task CleanupOldSavesAsync(int keepCount = 5);
-        
-        /// <summary>
-        /// 是否有未儲存的資料
-        /// </summary>
-        bool HasUnsavedData { get; }
-        
-        /// <summary>
-        /// 最後儲存時間
-        /// </summary>
-        DateTime LastSaveTime { get; }
     }
     
     /// <summary>

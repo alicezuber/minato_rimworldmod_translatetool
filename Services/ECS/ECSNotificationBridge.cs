@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
-using RimWorldTranslationTool.Services.ErrorHandling;
 using RimWorldTranslationTool.Services.Dialogs;
+using RimWorldTranslationTool.Services.ErrorHandling;
 
 namespace RimWorldTranslationTool.Services.ECS
 {

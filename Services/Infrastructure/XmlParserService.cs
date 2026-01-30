@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
-using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Models;
+using RimWorldTranslationTool.Services.Logging;
 
 namespace RimWorldTranslationTool.Services.Infrastructure
 {
@@ -19,7 +19,7 @@ namespace RimWorldTranslationTool.Services.Infrastructure
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public XDocument LoadXml(string filePath)
+        public XDocument? LoadXml(string filePath)
         {
             try
             {

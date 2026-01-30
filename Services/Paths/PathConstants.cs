@@ -58,19 +58,6 @@ namespace RimWorldTranslationTool.Services.Paths
         public const string GameExecutableNameMac = "RimWorldMac.app";
         
         /// <summary>
-        /// 官方擴展資料夾列表
-        /// </summary>
-        public static readonly string[] OfficialExpansions = 
-        {
-            "Core",
-            "Royalty", 
-            "Ideology",
-            "Biotech",
-            "Anomaly",
-            "Odyssey"
-        };
-        
-        /// <summary>
         /// 模組 About.xml 檔案路徑
         /// </summary>
         public const string ModAboutXml = @"About\About.xml";
@@ -84,5 +71,18 @@ namespace RimWorldTranslationTool.Services.Paths
         /// 模組 Defs 資料夾
         /// </summary>
         public const string ModDefsFolder = "Defs";
+        
+        /// <summary>
+        /// 官方擴展資料夾列表
+        /// </summary>
+        public static readonly string[] OfficialExpansions = 
+        {
+            "Core",
+            "Royalty", 
+            "Ideology",
+            "Biotech",
+            "Anomaly",
+            "Odyssey"
+        };
     }
 }

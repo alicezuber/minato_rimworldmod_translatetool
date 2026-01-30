@@ -1,6 +1,13 @@
 namespace RimWorldTranslationTool.Models
 {
     /// <summary>
+    /// 模組依賴信息
+    /// </summary>
+    public class ModModels
+    {
+    }
+
+    /// <summary>
     /// 模組來源枚舉
     /// </summary>
     public enum ModSource

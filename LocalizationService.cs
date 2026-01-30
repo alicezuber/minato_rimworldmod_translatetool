@@ -13,12 +13,8 @@ namespace RimWorldTranslationTool
         private static readonly Lazy<LocalizationService> _instance = 
             new Lazy<LocalizationService>(() => new LocalizationService());
         
-        public static LocalizationService Instance => _instance.Value;
-        
         private readonly ResourceManager _resourceManager;
         private CultureInfo _currentCulture;
-        
-        public event PropertyChangedEventHandler? PropertyChanged;
         
         private LocalizationService()
         {
@@ -27,6 +23,10 @@ namespace RimWorldTranslationTool
                 typeof(LocalizationService).Assembly);
             _currentCulture = CultureInfo.CurrentUICulture;
         }
+        
+        public event PropertyChangedEventHandler? PropertyChanged;
+        
+        public static LocalizationService Instance => _instance.Value;
         
         /// <summary>
         /// 當前語言文化

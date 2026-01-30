@@ -2,15 +2,15 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using RimWorldTranslationTool.Services.Logging;
-using RimWorldTranslationTool.Services.Dialogs;
-using RimWorldTranslationTool.Services.ErrorHandling;
-using RimWorldTranslationTool.Services.Paths;
 using RimWorldTranslationTool.Services.CrashReporting;
-using RimWorldTranslationTool.Services.EmergencySave;
+using RimWorldTranslationTool.Services.Dialogs;
 using RimWorldTranslationTool.Services.ECS;
-using RimWorldTranslationTool.Services.Scanning;
+using RimWorldTranslationTool.Services.EmergencySave;
+using RimWorldTranslationTool.Services.ErrorHandling;
 using RimWorldTranslationTool.Services.Infrastructure;
+using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.Paths;
+using RimWorldTranslationTool.Services.Scanning;
 using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.ViewModels;
 
@@ -21,6 +21,33 @@ namespace RimWorldTranslationTool
         private IServiceProvider? _serviceProvider;
 
         public IServiceProvider? ServiceProvider => _serviceProvider;
+
+        // 向後相容屬性
+        public ILoggerService? LoggerService => _serviceProvider?.GetService<ILoggerService>();
+        public IDialogService? DialogService => _serviceProvider?.GetService<IDialogService>();
+        public IErrorHandler? ErrorHandler => _serviceProvider?.GetService<IErrorHandler>();
+        public IPathService? PathService => _serviceProvider?.GetService<IPathService>();
+        public ICrashReportService? CrashReportService => _serviceProvider?.GetService<ICrashReportService>();
+        public IEmergencySaveService? EmergencySaveService => _serviceProvider?.GetService<IEmergencySaveService>();
+        public IECSManager? ECSManager => _serviceProvider?.GetService<IECSManager>();
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            try
+            {
+                var logger = _serviceProvider?.GetService<ILoggerService>();
+                if (logger != null)
+                {
+                    logger.LogInfoAsync($"應用程式關閉，退出代碼: {e.ApplicationExitCode}", "Application").Wait();
+                    if (logger is IDisposable disposable) disposable.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"應用程式關閉時發生錯誤: {ex.Message}");
+            }
+            base.OnExit(e);
+        }
 
         private void OnApplicationStartup(object sender, StartupEventArgs e)
         {
@@ -45,15 +72,6 @@ namespace RimWorldTranslationTool
                 Shutdown(1);
             }
         }
-
-        // 向後相容屬性
-        public ILoggerService? LoggerService => _serviceProvider?.GetService<ILoggerService>();
-        public IDialogService? DialogService => _serviceProvider?.GetService<IDialogService>();
-        public IErrorHandler? ErrorHandler => _serviceProvider?.GetService<IErrorHandler>();
-        public IPathService? PathService => _serviceProvider?.GetService<IPathService>();
-        public ICrashReportService? CrashReportService => _serviceProvider?.GetService<ICrashReportService>();
-        public IEmergencySaveService? EmergencySaveService => _serviceProvider?.GetService<IEmergencySaveService>();
-        public IECSManager? ECSManager => _serviceProvider?.GetService<IECSManager>();
 
         private void ConfigureServices()
         {
@@ -143,24 +161,6 @@ namespace RimWorldTranslationTool
                 await errorHandler.HandleExceptionAsync(e.Exception, "TaskScheduler", ErrorSeverity.Warning);
                 e.SetObserved();
             }
-        }
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            try
-            {
-                var logger = _serviceProvider?.GetService<ILoggerService>();
-                if (logger != null)
-                {
-                    logger.LogInfoAsync($"應用程式關閉，退出代碼: {e.ApplicationExitCode}", "Application").Wait();
-                    if (logger is IDisposable disposable) disposable.Dispose();
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"應用程式關閉時發生錯誤: {ex.Message}");
-            }
-            base.OnExit(e);
         }
 
         private async Task GracefulShutdownAsync(int exitCode)

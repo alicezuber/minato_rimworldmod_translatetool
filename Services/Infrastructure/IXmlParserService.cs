@@ -15,7 +15,7 @@ namespace RimWorldTranslationTool.Services.Infrastructure
         /// </summary>
         /// <param name="filePath">XML 檔案路徑</param>
         /// <returns>解析的 XDocument，失敗返回 null</returns>
-        XDocument LoadXml(string filePath);
+        XDocument? LoadXml(string filePath);
         
         /// <summary>
         /// 安全獲取 XML 元素值

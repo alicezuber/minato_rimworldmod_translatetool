@@ -10,6 +10,16 @@ namespace RimWorldTranslationTool.Services.Settings
     public interface ISettingsService
     {
         /// <summary>
+        /// 事件：設定載入完成
+        /// </summary>
+        event EventHandler<SettingsLoadedEventArgs>? SettingsLoaded;
+        
+        /// <summary>
+        /// 事件：設定保存完成
+        /// </summary>
+        event EventHandler<SettingsSavedEventArgs>? SettingsSaved;
+        
+        /// <summary>
         /// 載入設定
         /// </summary>
         Task<AppSettings> LoadSettingsAsync();
@@ -43,16 +53,6 @@ namespace RimWorldTranslationTool.Services.Settings
         /// 啟用/禁用自動保存
         /// </summary>
         void EnableAutoSave(bool enable = true);
-        
-        /// <summary>
-        /// 事件：設定載入完成
-        /// </summary>
-        event EventHandler<SettingsLoadedEventArgs>? SettingsLoaded;
-        
-        /// <summary>
-        /// 事件：設定保存完成
-        /// </summary>
-        event EventHandler<SettingsSavedEventArgs>? SettingsSaved;
     }
     
     /// <summary>

@@ -69,6 +69,11 @@ namespace RimWorldTranslationTool.ViewModels
         public Brush HasTranslationPatchBackground => GetStatusBackground(_model.HasTranslationPatch);
         public Brush CanTranslateBackground => GetStatusBackground(_model.CanTranslate);
 
+        public void Dispose()
+        {
+            _previewImage = null;
+        }
+
         private void LoadPreviewImage()
         {
             if (string.IsNullOrEmpty(_model.PreviewImagePath) || !System.IO.File.Exists(_model.PreviewImagePath))
@@ -108,11 +113,6 @@ namespace RimWorldTranslationTool.ViewModels
                 "無" or "否" => new SolidColorBrush(Color.FromArgb(50, 255, 0, 0)),
                 _ => new SolidColorBrush(Colors.Transparent)
             };
-        }
-
-        public void Dispose()
-        {
-            _previewImage = null;
         }
     }
 }

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using RimWorldTranslationTool.Models;
-using RimWorldTranslationTool.Services.Scanning;
-using RimWorldTranslationTool.Services.Paths;
 using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.Paths;
+using RimWorldTranslationTool.Services.Scanning;
 
 namespace RimWorldTranslationTool.ViewModels
 {

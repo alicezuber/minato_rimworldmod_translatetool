@@ -46,7 +46,8 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
         /// <summary>
         /// 註冊恢復策略
         /// </summary>
-        void RegisterRecoveryStrategy<T>(Func<T, string, Task<bool>> recoveryStrategy) where T : Exception;
+        void RegisterRecoveryStrategy<T>(Func<T, string, Task<bool>> recoveryStrategy)
+            where T : Exception;
         
         /// <summary>
         /// 設定預設錯誤處理動作
@@ -131,11 +132,6 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
     /// </summary>
     public class ErrorOccurredEventArgs : EventArgs
     {
-        public Exception Exception { get; }
-        public string Context { get; }
-        public ErrorSeverity Severity { get; }
-        public bool Recovered { get; }
-
         public ErrorOccurredEventArgs(Exception exception, string context, ErrorSeverity severity, bool recovered)
         {
             Exception = exception;
@@ -143,5 +139,10 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             Severity = severity;
             Recovered = recovered;
         }
+
+        public Exception Exception { get; }
+        public string Context { get; }
+        public ErrorSeverity Severity { get; }
+        public bool Recovered { get; }
     }
 }

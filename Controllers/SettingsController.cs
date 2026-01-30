@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Win32;
-using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.Models;
-using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Dialogs;
+using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.Settings;
 using RimWorldTranslationTool.ViewModels;
 
 namespace RimWorldTranslationTool.Controllers

@@ -9,6 +9,16 @@ namespace RimWorldTranslationTool.Services.CrashReporting
     public interface ICrashReportService
     {
         /// <summary>
+        /// 是否啟用自動發送
+        /// </summary>
+        bool IsAutoSendEnabled { get; set; }
+        
+        /// <summary>
+        /// 崩潰報告目錄
+        /// </summary>
+        string CrashReportDirectory { get; }
+        
+        /// <summary>
         /// 生成崩潰報告
         /// </summary>
         Task<CrashReport> GenerateCrashReportAsync(Exception exception, string context = "");
@@ -32,16 +42,6 @@ namespace RimWorldTranslationTool.Services.CrashReporting
         /// 清理舊的崩潰報告
         /// </summary>
         Task CleanupOldReportsAsync(int keepDays = 30);
-        
-        /// <summary>
-        /// 是否啟用自動發送
-        /// </summary>
-        bool IsAutoSendEnabled { get; set; }
-        
-        /// <summary>
-        /// 崩潰報告目錄
-        /// </summary>
-        string CrashReportDirectory { get; }
     }
     
     /// <summary>

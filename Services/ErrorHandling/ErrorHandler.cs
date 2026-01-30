@@ -20,8 +20,6 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
         private readonly object _statsLock = new object();
         private ErrorStatistics _statistics;
 
-        public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
-        
         public ErrorHandler(ILoggerService loggerService)
         {
             _loggerService = loggerService;
@@ -33,6 +31,8 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             SetupDefaultHandlers();
             RegisterDefaultRecoveryStrategies();
         }
+
+        public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
         
         public async Task<T> SafeExecuteAsync<T>(Func<Task<T>> operation, string operationName, ErrorSeverity severity = ErrorSeverity.Error)
         {
@@ -164,7 +164,8 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
             }
         }
         
-        public void RegisterRecoveryStrategy<T>(Func<T, string, Task<bool>> recoveryStrategy) where T : Exception
+        public void RegisterRecoveryStrategy<T>(Func<T, string, Task<bool>> recoveryStrategy)
+            where T : Exception
         {
             _recoveryStrategies[typeof(T)] = (ex, context) => recoveryStrategy((T)ex, context);
         }
@@ -260,7 +261,7 @@ namespace RimWorldTranslationTool.Services.ErrorHandling
         private void SetupDefaultHandlers()
         {
             // 預設不再這裡處理 UI，交由 ECSNotificationBridge
-            SetDefaultErrorHandler(ErrorSeverity.Info, async (ex, context) => { });
+            SetDefaultErrorHandler(ErrorSeverity.Info, async (ex, context) => { await Task.CompletedTask; });
         }
         
         private void RegisterDefaultRecoveryStrategies()

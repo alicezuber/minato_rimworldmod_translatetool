@@ -12,9 +12,12 @@ namespace RimWorldTranslationTool
     public class SettingsManager
     {
         private static readonly Lazy<SettingsManager> _instance = new Lazy<SettingsManager>(() => new SettingsManager());
-        public static SettingsManager Instance => _instance.Value;
 
-        private SettingsManager() { }
+        private SettingsManager()
+        {
+        }
+
+        public static SettingsManager Instance => _instance.Value;
 
         public Task<AppSettings> LoadSettingsAsync() => throw new NotSupportedException("請使用 ISettingsService");
         public void TriggerAutoSave() => throw new NotSupportedException("請使用 ISettingsService");
@@ -27,18 +30,28 @@ namespace RimWorldTranslationTool
         public void UpdateSetting(Action<AppSettings> updateAction) => throw new NotSupportedException("請使用 ISettingsService");
         public AppSettings GetCurrentSettings() => throw new NotSupportedException("請使用 ISettingsService");
         public bool IsLoadingSettings() => throw new NotSupportedException("請使用 ISettingsService");
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
     }
 
     public class SettingsLoadedEventArgs : EventArgs
     {
+        public SettingsLoadedEventArgs(AppSettings settings)
+        {
+            Settings = settings;
+        }
+
         public AppSettings Settings { get; }
-        public SettingsLoadedEventArgs(AppSettings settings) => Settings = settings;
     }
 
     public class SettingsSavedEventArgs : EventArgs
     {
+        public SettingsSavedEventArgs(AppSettings settings)
+        {
+            Settings = settings;
+        }
+
         public AppSettings Settings { get; }
-        public SettingsSavedEventArgs(AppSettings settings) => Settings = settings;
     }
 }

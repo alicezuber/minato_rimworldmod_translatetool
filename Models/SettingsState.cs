@@ -82,13 +82,6 @@ namespace RimWorldTranslationTool.Models
         /// </summary>
         public bool IsConfigurationComplete => IsGamePathSet && IsModsConfigSet;
         
-        public event PropertyChangedEventHandler? PropertyChanged;
-        
-        protected virtual void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        
         /// <summary>
         /// 標記為已修改
         /// </summary>
@@ -114,6 +107,13 @@ namespace RimWorldTranslationTool.Models
             CurrentSettings = new AppSettings();
             HasUnsavedChanges = false;
             LastSaveTime = "";
+        }
+        
+        public event PropertyChangedEventHandler? PropertyChanged;
+        
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }

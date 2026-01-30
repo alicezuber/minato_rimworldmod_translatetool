@@ -191,6 +191,19 @@ namespace RimWorldTranslationTool.Services.Logging
                 }
             });
         }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _disposed = true;
+                _cleanupTimer?.Dispose();
+                _writeLock?.Dispose();
+                
+                // 確保所有日誌都被寫入
+                FlushLogsAsync().Wait();
+            }
+        }
         
         private async Task LogAsync(LogLevel level, string message, string category, Exception? exception)
         {
@@ -331,19 +344,6 @@ namespace RimWorldTranslationTool.Services.Logging
             catch (Exception ex)
             {
                 Debug.WriteLine($"建立日誌目錄失敗: {_config.LogDirectory} | 錯誤: {ex.Message}");
-            }
-        }
-        
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                _disposed = true;
-                _cleanupTimer?.Dispose();
-                _writeLock?.Dispose();
-                
-                // 確保所有日誌都被寫入
-                FlushLogsAsync().Wait();
             }
         }
     }

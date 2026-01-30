@@ -75,7 +75,7 @@ namespace RimWorldTranslationTool.Services.Scanning
                     Name = name,
                     Author = _xmlParser.GetElementValue(meta, "author"),
                     PackageId = packageId,
-                    SupportedVersions = _xmlParser.GetVersionsString(meta.Element("supportedVersions")),
+                    SupportedVersions = _xmlParser.GetVersionsString(meta.Element("supportedVersions")!),
                     SupportedLanguages = DetectSupportedLanguages(modPath),
                     
                     Description = _xmlParser.GetDescription(meta),
@@ -86,7 +86,7 @@ namespace RimWorldTranslationTool.Services.Scanning
                     LoadAfter = _xmlParser.GetLoadAfterList(meta),
                     IncompatibleWith = _xmlParser.GetIncompatibleWithList(meta),
                     
-                    IsVersionCompatible = CheckVersionCompatibility(_xmlParser.GetVersionsString(meta.Element("supportedVersions")))
+                    IsVersionCompatible = CheckVersionCompatibility(_xmlParser.GetVersionsString(meta.Element("supportedVersions")!))
                 };
 
                 // 獲取預覽圖路徑

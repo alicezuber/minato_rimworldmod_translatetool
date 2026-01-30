@@ -13,11 +13,16 @@ namespace RimWorldTranslationTool
     public class ThemeManager
     {
         private static ThemeManager? _instance;
-        public static ThemeManager Instance => _instance ??= new ThemeManager();
+        private AppTheme _currentTheme = AppTheme.Light;
+
+        private ThemeManager()
+        {
+        }
 
         public event EventHandler? ThemeChanged;
 
-        private AppTheme _currentTheme = AppTheme.Light;
+        public static ThemeManager Instance => _instance ??= new ThemeManager();
+
         public AppTheme CurrentTheme
         {
             get => _currentTheme;
@@ -33,8 +38,6 @@ namespace RimWorldTranslationTool
 
         public bool IsDarkMode => CurrentTheme == AppTheme.Dark;
 
-        private ThemeManager() { }
-
         public void SetTheme(AppTheme theme)
         {
             CurrentTheme = theme;
@@ -44,6 +47,26 @@ namespace RimWorldTranslationTool
         public void ToggleTheme()
         {
             SetTheme(CurrentTheme == AppTheme.Light ? AppTheme.Dark : AppTheme.Light);
+        }
+
+        public string GetThemeName() => CurrentTheme.ToString();
+
+        public void LoadThemeFromSettings(string? themeName)
+        {
+            if (string.IsNullOrEmpty(themeName))
+            {
+                SetTheme(AppTheme.Light);
+                return;
+            }
+
+            if (Enum.TryParse<AppTheme>(themeName, true, out var theme))
+            {
+                SetTheme(theme);
+            }
+            else
+            {
+                SetTheme(AppTheme.Light);
+            }
         }
 
         private void ApplyTheme(AppTheme theme)
@@ -109,25 +132,5 @@ namespace RimWorldTranslationTool
                 resources["InfoBoxBackgroundBrush"] = new SolidColorBrush(Color.FromRgb(0xF8, 0xFA, 0xFC));
             }
         }
-
-        public void LoadThemeFromSettings(string? themeName)
-        {
-            if (string.IsNullOrEmpty(themeName))
-            {
-                SetTheme(AppTheme.Light);
-                return;
-            }
-
-            if (Enum.TryParse<AppTheme>(themeName, true, out var theme))
-            {
-                SetTheme(theme);
-            }
-            else
-            {
-                SetTheme(AppTheme.Light);
-            }
-        }
-
-        public string GetThemeName() => CurrentTheme.ToString();
     }
 }

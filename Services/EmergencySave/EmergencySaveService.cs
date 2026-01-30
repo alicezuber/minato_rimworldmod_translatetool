@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using RimWorldTranslationTool.Services.Paths;
 using RimWorldTranslationTool.Services.Logging;
+using RimWorldTranslationTool.Services.Paths;
 
 namespace RimWorldTranslationTool.Services.EmergencySave
 {
@@ -90,15 +90,6 @@ namespace RimWorldTranslationTool.Services.EmergencySave
         public async Task<bool> SaveApplicationStateAsync() => await SaveComponentAsync("ApplicationState");
         public async Task<bool> SaveModDataAsync() => await SaveComponentAsync("ModData");
 
-        private async Task<bool> SaveComponentAsync(string name)
-        {
-            if (_components.TryGetValue(name, out var component))
-            {
-                try { await component.SaveAsync(); return true; } catch { return false; }
-            }
-            return false;
-        }
-
         public async Task<EmergencySaveStatus> GetStatusAsync()
         {
             return await Task.FromResult(new EmergencySaveStatus
@@ -114,6 +105,23 @@ namespace RimWorldTranslationTool.Services.EmergencySave
         {
             // 實作清理邏輯...
             await Task.CompletedTask;
+        }
+
+        private async Task<bool> SaveComponentAsync(string name)
+        {
+            if (_components.TryGetValue(name, out var component))
+            {
+                try
+                {
+                    await component.SaveAsync();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+            return false;
         }
     }
 }
