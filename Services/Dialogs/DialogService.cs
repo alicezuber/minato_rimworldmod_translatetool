@@ -160,17 +160,19 @@ namespace RimWorldTranslationTool.Services.Dialogs
         {
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var icon = type switch
+                var dialogType = type switch
                 {
-                    DialogType.Success => MessageBoxImage.Information,
-                    DialogType.Info => MessageBoxImage.Information,
-                    DialogType.Warning => MessageBoxImage.Warning,
-                    DialogType.Error => MessageBoxImage.Error,
-                    DialogType.Critical => MessageBoxImage.Error,
-                    _ => MessageBoxImage.None
+                    DialogType.Success => Views.ModernDialogType.Success,
+                    DialogType.Info => Views.ModernDialogType.Info,
+                    DialogType.Warning => Views.ModernDialogType.Warning,
+                    DialogType.Error => Views.ModernDialogType.Error,
+                    DialogType.Critical => Views.ModernDialogType.Critical,
+                    _ => Views.ModernDialogType.Info
                 };
-                
-                MessageBox.Show(message, title, MessageBoxButton.OK, icon);
+
+                var dialog = new Views.ModernDialog(message, title, dialogType);
+                dialog.Owner = Application.Current.MainWindow;
+                dialog.ShowDialog();
             }).Task.ConfigureAwait(false);
         }
     }

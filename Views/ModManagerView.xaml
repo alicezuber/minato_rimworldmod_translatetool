@@ -1,0 +1,175 @@
+<UserControl x:Class="RimWorldTranslationTool.Views.ModManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="700" d:DesignWidth="1100">
+    
+    <Grid Margin="32,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        
+        <!-- 頁面標題 -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,24">
+            <TextBlock Text="模組管理器" 
+                       FontSize="28" 
+                       FontWeight="Bold" 
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="管理模組啟用狀態和載入順序" 
+                       FontSize="14" 
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="0,8,0,0"/>
+        </StackPanel>
+        
+        <!-- 主內容區 -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- 可用模組池 -->
+            <Border Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="可用模組" 
+                                   FontSize="16" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock Text="拖曳或雙擊以啟用" 
+                                   FontSize="12" 
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                    
+                    <ListBox Grid.Row="1" 
+                             ItemsSource="{Binding AvailableMods}"
+                             SelectedItem="{Binding SelectedAvailableMod}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource BgTertiaryBrush}" 
+                                        CornerRadius="8" 
+                                        Padding="12" 
+                                        Margin="0,2">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" 
+                                                   FontSize="13" 
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Author}" 
+                                                   FontSize="11" 
+                                                   Foreground="{StaticResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+            
+            <!-- 中間操作按鈕 -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0">
+                <Button Content="▶" 
+                        Style="{StaticResource IconButton}"
+                        Command="{Binding EnableModCommand}"
+                        ToolTip="啟用選中模組"
+                        Margin="0,0,0,8"/>
+                <Button Content="◀" 
+                        Style="{StaticResource IconButton}"
+                        Command="{Binding DisableModCommand}"
+                        ToolTip="停用選中模組"
+                        Margin="0,0,0,8"/>
+                <Button Content="▲" 
+                        Style="{StaticResource IconButton}"
+                        Command="{Binding MoveUpCommand}"
+                        ToolTip="上移"/>
+                <Button Content="▼" 
+                        Style="{StaticResource IconButton}"
+                        Command="{Binding MoveDownCommand}"
+                        ToolTip="下移"/>
+            </StackPanel>
+            
+            <!-- 已啟用模組 -->
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Margin="0,0,0,16">
+                        <TextBlock Text="已啟用模組" 
+                                   FontSize="16" 
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <TextBlock FontSize="12" 
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Margin="0,4,0,0">
+                            <Run Text="共 "/>
+                            <Run Text="{Binding EnabledModsCount}"/>
+                            <Run Text=" 個模組"/>
+                        </TextBlock>
+                    </StackPanel>
+                    
+                    <ListBox Grid.Row="1" 
+                             ItemsSource="{Binding EnabledMods}"
+                             SelectedItem="{Binding SelectedEnabledMod}"
+                             Background="Transparent"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource BgTertiaryBrush}" 
+                                        CornerRadius="8" 
+                                        Padding="12" 
+                                        Margin="0,2">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding LoadOrder}" 
+                                                   FontSize="11" 
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0"
+                                                   Width="24"/>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="{Binding Name}" 
+                                                       FontSize="13" 
+                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding Author}" 
+                                                       FontSize="11" 
+                                                       Foreground="{StaticResource TextMutedBrush}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    
+                    <!-- 底部操作 -->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                        <Button Content="重新整理" 
+                                Style="{StaticResource GhostButton}"
+                                Command="{Binding RefreshCommand}"
+                                Margin="0,0,12,0"/>
+                        <Button Content="儲存設定" 
+                                Style="{StaticResource PrimaryButton}"
+                                Command="{Binding SaveCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

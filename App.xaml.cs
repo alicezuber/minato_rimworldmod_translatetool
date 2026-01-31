@@ -8,11 +8,14 @@ using RimWorldTranslationTool.Services.ECS;
 using RimWorldTranslationTool.Services.EmergencySave;
 using RimWorldTranslationTool.Services.ErrorHandling;
 using RimWorldTranslationTool.Services.Infrastructure;
+using RimWorldTranslationTool.Services.Localization;
 using RimWorldTranslationTool.Services.Logging;
 using RimWorldTranslationTool.Services.Paths;
 using RimWorldTranslationTool.Services.Scanning;
 using RimWorldTranslationTool.Services.Settings;
+using RimWorldTranslationTool.Services.Theme;
 using RimWorldTranslationTool.ViewModels;
+using RimWorldTranslationTool.Views;
 
 namespace RimWorldTranslationTool
 {
@@ -57,14 +60,14 @@ namespace RimWorldTranslationTool
                 ConfigureServices();
 
                 // 2. 初始化本地化服務 - 預設繁體中文
-                LocalizationService.Instance.SetLanguage("zh-TW");
+                Services.Localization.LocalizationService.Instance.SetLanguage("zh-TW");
 
                 // 3. 設定全域異常處理
                 SetupGlobalExceptionHandling();
 
-                // 4. 顯示主視窗
-                var mainWindow = _serviceProvider?.GetRequiredService<MainWindow>();
-                mainWindow?.Show();
+                // 4. 顯示新的主視窗
+                var mainShell = _serviceProvider?.GetRequiredService<MainShell>();
+                mainShell?.Show();
             }
             catch (Exception ex)
             {
@@ -95,7 +98,10 @@ namespace RimWorldTranslationTool
             services.AddSingleton<IModInfoService, ModInfoService>();
             services.AddSingleton<IModScannerService, ModScannerService>();
             services.AddSingleton<ITranslationMappingService, TranslationMappingService>();
-            
+
+            // 主題服務
+            services.AddSingleton<IThemeService, ThemeService>();
+
             // 設定相關
             services.AddSingleton<SettingsValidationService>();
             services.AddSingleton<SettingsBackupService>();
@@ -104,9 +110,14 @@ namespace RimWorldTranslationTool
 
             // 4. ViewModels
             services.AddSingleton<MainViewModel>();
+            services.AddSingleton<SettingsViewModel>();
+            services.AddSingleton<ModBrowserViewModel>();
 
             // 5. Views
-            services.AddSingleton<MainWindow>();
+            services.AddSingleton<MainShell>();
+            services.AddSingleton<SettingsView>();
+            services.AddSingleton<ModBrowserView>();
+            services.AddSingleton<ModManagerView>();
 
             _serviceProvider = services.BuildServiceProvider();
 
